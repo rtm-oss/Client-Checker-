@@ -106,7 +106,6 @@ campaigns_data = [
 # ---------------------------------------------------------
 def clean_and_parse_json(text):
     try:
-        # Try to find JSON block
         match = re.search(r'\{.*\}', text, re.DOTALL)
         if match:
             return json.loads(match.group(0))
@@ -115,7 +114,7 @@ def clean_and_parse_json(text):
         return None
 
 # ---------------------------------------------------------
-# 4. API LOGIC (Hugging Face - Zephyr Version 🌪️)
+# 4. API LOGIC (Hugging Face Version 🫂)
 # ---------------------------------------------------------
 hf_key = st.secrets.get("HUGGINGFACEHUB_API_TOKEN")
 
@@ -131,8 +130,8 @@ if not hf_key:
 current_year = datetime.datetime.now().year
 data_context = json.dumps(campaigns_data)
 
-# Using Zephyr 7B Beta - The King of Free Tier Stability 👑
-repo_id = "HuggingFaceH4/zephyr-7b-beta"
+# ✅ استخدام موديل Mistral v0.2 لأنه الأكثر استقراراً في الباقة المجانية
+repo_id = "mistralai/Mistral-7B-Instruct-v0.2"
 
 # --- PROMPT ---
 system_prompt = f"""
@@ -181,7 +180,7 @@ with col2:
 if check_btn and user_input:
     with st.spinner("Processing with AI..."):
         try:
-            # Initialize HF Endpoint with Zephyr
+            # Initialize HF Endpoint
             llm = HuggingFaceEndpoint(
                 repo_id=repo_id, 
                 temperature=0.1, 
@@ -189,8 +188,8 @@ if check_btn and user_input:
                 timeout=120
             )
             
-            # Zephyr/Mistral Prompt Format
-            full_prompt = f"<|system|>\n{system_prompt}</s>\n<|user|>\n{user_input}</s>\n<|assistant|>"
+            # Simple Prompt Format for Mistral v0.2
+            full_prompt = f"[INST] {system_prompt} \n\n User Input: {user_input} [/INST]"
             
             response = llm.invoke(full_prompt)
             result_json = clean_and_parse_json(response)
@@ -260,6 +259,6 @@ if check_btn and user_input:
 """
                         st.markdown(html_card, unsafe_allow_html=True)
             else:
-                st.warning("⚠️ AI didn't return valid JSON. Please try again.")
+                st.warning("⚠️ AI Response Error. Try again.")
         except Exception as e:
             st.error(f"Error: {e}")
