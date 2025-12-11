@@ -201,7 +201,10 @@ st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_h
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    user_input = st.text_input("Search Patient", placeholder="e.g.NY 1950 BB")
+    # ---------------------------
+    # TWEAK: Updated Placeholder
+    # ---------------------------
+    user_input = st.text_input("Search Patient", placeholder="e.g. NY 1950")
     check_btn = st.button("Check Eligibility Now")
 
 if check_btn and user_input:
@@ -212,7 +215,12 @@ if check_btn and user_input:
             st.error("❌ Could not detect State (e.g. NY) or Birth Year (e.g. 1950). Please check format.")
         else:
             age = calculate_age(year)
-            st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age} | State {state} | Input: {combo_raw}</div>""", unsafe_allow_html=True)
+            
+            # ---------------------------
+            # TWEAK: Smart Summary Text (Hides "None")
+            # ---------------------------
+            combo_display = f" | Combo: {combo_raw}" if combo_raw and combo_raw != "None" else ""
+            st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age} | State {state}{combo_display}</div>""", unsafe_allow_html=True)
             
             # 1. Filter ACTIVE Campaigns Only
             active_campaigns = [c for c in CAMPAIGNS if c.get("status") == "Active"]
@@ -259,5 +267,3 @@ if check_btn and user_input:
 </div>
 """
                     st.markdown(html_card, unsafe_allow_html=True)
-
-
