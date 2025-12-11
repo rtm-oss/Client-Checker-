@@ -26,14 +26,57 @@ st.markdown("""
     .val-error { color: #ff8a80; font-weight: bold; text-shadow: 0 0 8px rgba(255, 138, 128, 0.3); }
     .val-neutral { color: #b0bec5; }
     .val-list { color: #fff59d; font-size: 0.9rem; font-weight: 600; text-align: right; flex: 1; margin-left: 10px; line-height: 1.3; }
+    
+    /* ملاحظات خاصة (Age & Special Notes) */
     .age-note { font-size: 0.75rem; color: #ffab91; text-align: right; margin-top: -5px; font-style: italic;}
+    .special-note { 
+        font-size: 0.85rem; 
+        color: #ff80ab; /* لون وردي/أحمر فاتح مميز */
+        text-align: center; 
+        margin-top: 10px; 
+        font-weight: bold;
+        background: rgba(255, 64, 129, 0.1);
+        padding: 5px;
+        border-radius: 5px;
+        border: 1px dashed #ff80ab;
+    }
+
     .combo-box { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
     .combo-green { background: rgba(27, 94, 32, 0.4); border: 1px solid #00e676; color: #b9f6ca; }
     .combo-orange { background: #FFC50F; border: 1px solid #FFD740; color: #000000; box-shadow: 0 0 10px rgba(255, 197, 15, 0.2); }
     .combo-blue { background: rgba(2, 119, 189, 0.4); border: 1px solid #29b6f6; color: #e1f5fe; }
     .reason-text { margin-top: 15px; font-size: 0.85rem; color: #b0bec5; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 8px; border-left: 3px solid #607d8b; line-height: 1.5; }
-    .portal-link { display: block; margin-top: 20px; padding: 12px; background: linear-gradient(90deg, #2196f3, #21cbf3); color: white !important; text-align: center; text-decoration: none; border-radius: 50px; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(33, 203, 243, 0.3); }
-    .portal-link:hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(33, 203, 243, 0.5); }
+    
+    /* أزرار اللينكات */
+    .links-container { display: flex; gap: 10px; margin-top: 20px; }
+    .portal-link { 
+        flex: 1;
+        padding: 10px; 
+        background: linear-gradient(90deg, #2196f3, #21cbf3); 
+        color: white !important; 
+        text-align: center; 
+        text-decoration: none; 
+        border-radius: 50px; 
+        font-weight: bold; 
+        font-size: 0.9rem;
+        transition: 0.3s; 
+        box-shadow: 0 4px 15px rgba(33, 203, 243, 0.3); 
+    }
+    .extra-link {
+        flex: 1;
+        padding: 10px; 
+        background: linear-gradient(90deg, #7b1fa2, #ab47bc); /* لون موف مميز للينك الإضافي */
+        color: white !important; 
+        text-align: center; 
+        text-decoration: none; 
+        border-radius: 50px; 
+        font-weight: bold; 
+        font-size: 0.9rem;
+        transition: 0.3s; 
+        box-shadow: 0 4px 15px rgba(171, 71, 188, 0.3); 
+    }
+    .portal-link:hover, .extra-link:hover { transform: scale(1.05); }
+
     .stButton>button { width: 100%; background: linear-gradient(90deg, #00c853, #00e676); color: #003300; font-size: 1.3rem; border-radius: 12px; padding: 14px; border: none; font-weight: 800; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3); transition: 0.3s; }
     .stButton>button:hover { transform: scale(1.01); box-shadow: 0 6px 25px rgba(0, 230, 118, 0.5); color: #000; }
     .stTextInput>div>div>input { background-color: #161b22; border: 1px solid rgba(255, 255, 255, 0.2); color: white; border-radius: 10px; padding: 10px; font-size: 1.1rem; }
@@ -51,12 +94,14 @@ DL_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "ID", "IL", "
 MEDX_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MS", "MT", "NE", "NH", "NJ", "NM", "NC", "OH", "NY", "RI", "SC", "ID", "TN", "TX", "VA", "VT", "SD", "UT", "WI", "WY", "WV", "WA", "OR", "MO"]
 WE_STATES = ["VT", "NH", "ME", "MA", "RI", "DE", "NY", "ID", "UT", "MT", "WY", "SD", "NE", "KS", "IA", "CA", "MO", "AZ", "WA", "LA", "WI", "MS", "IN", "WV", "VA", "SC", "MI", "TX", "NC", "AK", "NM"]
 
-# Updated CAMPAIGNS with Status
+# Updated CAMPAIGNS with New Links & Notes
 CAMPAIGNS = [
     {
         "name": "PC-Telemed",
         "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-pc-telemed?authuser=0",
+        "resource_link": "https://data.hrsa.gov/tools/medicare/telehealth", # New Link
+        "resource_label": "🛠️ Check Medicare",
         "provided": "BB, BKB, BB + Single Knee",
         "combo_type": "accepted",
         "combo_list": ["BB", "Both Knees", "BB + Single Knee"],
@@ -69,7 +114,10 @@ CAMPAIGNS = [
         "name": "DL-PCP",
         "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-dl-pcp?authuser=0",
+        "resource_link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/qualified-taxonomies-check?authuser=0", # New Link
+        "resource_label": "🔍 Taxonomies Check",
         "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
+        "special_note": "Note That Dr must be treating the pain", # New Note
         "combo_type": "none", 
         "states": DL_STATES,
         "min_age": 0,
@@ -79,7 +127,10 @@ CAMPAIGNS = [
         "name": "MEDX-PCP",
         "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-medx-chasing?authuser=0",
+        "resource_link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/qualified-taxonomies-check?authuser=0", # New Link
+        "resource_label": "🔍 Taxonomies Check",
         "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
+        "special_note": "Note That Dr must be treating the pain", # New Note
         "combo_type": "none",
         "states": MEDX_STATES,
         "min_age": 0,
@@ -89,18 +140,22 @@ CAMPAIGNS = [
         "name": "WE-PCP",
         "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/2-we-pcp?authuser=0",
+        "resource_link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/qualified-taxonomies-check?authuser=0", # New Link
+        "resource_label": "🔍 Taxonomies Check",
         "provided": "Back, Knee, Wrist, Shoulder, Elbow, Ankle, Neck",
         "combo_type": "not_accepted",
         "combo_list": ["WRISTS + ANKLES", "ELBOWS + ANKLES", "WRISTS + ELBOWS", "WRISTS + SHOULDERS", "ELBOWS + SHOULDERS", "NECK + SHOULDER"],
         "states": WE_STATES,
         "min_age": 0,
         "max_age": 89, 
-        "age_note": "Limit: Max 89 years & 11 months" # 🔥 Updated Note
+        "age_note": "Limit: Max 89 years & 11 months"
     },
     {
         "name": "CGM-PCP",
         "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/3-cgm-pcp?authuser=0",
+        "resource_link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/qualified-taxonomies-check?authuser=0", # New Link
+        "resource_label": "🔍 Taxonomies Check",
         "provided": "Dexcom (CGM)",
         "combo_type": "none",
         "states": ALL_STATES,
@@ -117,37 +172,24 @@ CAMPAIGNS = [
 # 3. HELPER FUNCTIONS
 # ---------------------------------------------------------
 def parse_input(user_input):
-    """
-    Parses '11-1938' (MM-YYYY) or '1938' (YYYY).
-    """
     clean_text = user_input.upper()
-    
-    # 1. FIND DATE (MM-YYYY or MM/YYYY or just YYYY)
     year = None
-    month = 1 # Default to January if not provided
-    
-    # Check for MM-YYYY or MM/YYYY pattern first
+    month = 1 
     date_match = re.search(r'\b(0?[1-9]|1[0-2])[-/](19|20)\d{2}\b', clean_text)
-    
     if date_match:
-        # Extract Month and Year
         date_str = date_match.group(0)
-        if '-' in date_str: parts = date_str.split('-')
-        else: parts = date_str.split('/')
+        parts = date_str.split('-') if '-' in date_str else date_str.split('/')
         month = int(parts[0])
         year = int(parts[1])
-        # Remove this date string from text
         text_without_date = clean_text.replace(date_str, " ")
     else:
-        # Fallback to finding just YYYY
         year_match = re.search(r'(19|20)\d{2}', clean_text)
         if year_match:
             year = int(year_match.group(0))
             text_without_date = clean_text.replace(str(year), " ")
         else:
-            text_without_date = clean_text # No date found
+            text_without_date = clean_text
 
-    # 2. FIND STATE
     state = None
     found_states = []
     for s in ALL_STATES:
@@ -162,10 +204,8 @@ def parse_input(user_input):
                 break
         state = best_state if best_state else found_states[0]
 
-    # 3. EXTRACT COMBO
     combo_text = clean_text
     if state: combo_text = combo_text.replace(state, "")
-    # Remove the exact date format found
     if date_match: combo_text = combo_text.replace(date_match.group(0), "")
     elif year: combo_text = combo_text.replace(str(year), "")
     
@@ -177,44 +217,29 @@ def parse_input(user_input):
     return state, year, month, combo_text
 
 def calculate_precise_age(birth_year, birth_month):
-    """
-    Returns (years, months)
-    """
     today = datetime.date.today()
-    
-    # Calculate years
     age_years = today.year - birth_year
-    
-    # Adjust based on month
     if today.month < birth_month:
         age_years -= 1
         age_months = 12 - (birth_month - today.month)
     else:
         age_months = today.month - birth_month
-        
     return age_years, age_months
 
 def check_campaign_eligibility(campaign, state, age_y, age_m):
     reasons = []
     is_eligible = True
     
-    # 1. State Check
     if state not in campaign["states"]:
         is_eligible = False
         reasons.append(f"State {state} is NOT in approved list.")
     
-    # 2. Age Check (Precise Logic)
-    # Special Logic for WE-PCP (Max 89y 11m)
     if campaign["name"] == "WE-PCP":
-        # Limit in total months: (89 * 12) + 11 = 1079 months
         max_months_limit = (89 * 12) + 11
         patient_months = (age_y * 12) + age_m
-        
         if patient_months > max_months_limit:
             is_eligible = False
             reasons.append(f"Age exceeds limit (Max 89y 11m).")
-            
-    # Standard Logic for others
     else:
         if age_y < campaign["min_age"] or age_y > campaign["max_age"]:
             is_eligible = False
@@ -231,7 +256,6 @@ def check_campaign_eligibility(campaign, state, age_y, age_m):
 def format_combo_rule(campaign):
     ctype = campaign["combo_type"]
     clist = campaign.get("combo_list", [])
-    
     if ctype == "accepted":
         text = f"Accepted: {', '.join(clist)}"
         css = "combo-green"
@@ -244,7 +268,6 @@ def format_combo_rule(campaign):
         text = "no combo"
         css = "combo-blue"
         icon = "ℹ️"
-        
     return text, css, icon
 
 # ---------------------------------------------------------
@@ -254,7 +277,7 @@ st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_h
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    user_input = st.text_input("Search Patient", placeholder="e.g. 11-1938 NY (or just 1938)")
+    user_input = st.text_input("Search Patient", placeholder="e.g. 11-1938 NY BB (or just 1938)")
     check_btn = st.button("Check Eligibility Now")
 
 if check_btn and user_input:
@@ -265,7 +288,6 @@ if check_btn and user_input:
             st.error("❌ Could not detect State (e.g. NY) or Year (e.g. 1950). Check format.")
         else:
             age_y, age_m = calculate_precise_age(year, month)
-            
             combo_display = f" | Combo: {combo_raw}" if combo_raw and combo_raw != "None" else ""
             st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age_y}y {age_m}m | State {state}{combo_display}</div>""", unsafe_allow_html=True)
             
@@ -285,10 +307,7 @@ if check_btn and user_input:
                     status_html = '<span class="badge badge-error">❌ NOT ELIGIBLE</span>'
                     border_style = "border-top: 5px solid #ff5252;"
                     state_valid = state in campaign["states"]
-                    
-                    # Age valid visualization logic
                     if campaign["name"] == "WE-PCP":
-                        # Visual check for WE-PCP
                         limit_months = (89 * 12) + 11
                         pat_months = (age_y * 12) + age_m
                         age_valid = pat_months <= limit_months
@@ -308,9 +327,18 @@ if check_btn and user_input:
                     rows_html += f'<div class="age-note">⚠️ {campaign["age_note"]}</div>'
 
                 rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{campaign["provided"]}</span></div>'
+                
+                # 🔥 Special Note Logic (DL & MEDX)
+                if "special_note" in campaign:
+                    rows_html += f'<div class="special-note">⚠️ {campaign["special_note"]}</div>'
 
                 combo_text, combo_css, combo_icon = format_combo_rule(campaign)
                 combo_html = f'<div class="combo-box {combo_css}">{combo_icon} {combo_text}</div>'
+
+                # Link Logic (Main + Resource)
+                res_link_html = ""
+                if "resource_link" in campaign:
+                    res_link_html = f'<a href="{campaign["resource_link"]}" target="_blank" class="extra-link">{campaign["resource_label"]}</a>'
 
                 with cols[idx % 3]:
                     html_card = f"""
@@ -320,8 +348,10 @@ if check_btn and user_input:
     <div style="margin-bottom: 10px;">{rows_html}</div>
     {combo_html}
     <div class="reason-text">💡 {reason_summary}</div>
-    <a href="{campaign['link']}" target="_blank" class="portal-link">🔗 Open Portal</a>
+    <div class="links-container">
+        <a href="{campaign['link']}" target="_blank" class="portal-link">🔗 Open Portal</a>
+        {res_link_html}
+    </div>
 </div>
 """
                     st.markdown(html_card, unsafe_allow_html=True)
-
