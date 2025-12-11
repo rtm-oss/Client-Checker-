@@ -220,7 +220,7 @@ if check_btn and user_input:
             st.error("❌ Could not detect State (e.g. NY) or Birth Year (e.g. 1950). Please check format.")
         else:
             age = calculate_age(year)
-            st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age} | State {state} | Input: {combo_raw}</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age} | State {state} </div>""", unsafe_allow_html=True)
             
             cols = st.columns(3)
             for idx, campaign in enumerate(CAMPAIGNS):
@@ -262,4 +262,5 @@ if check_btn and user_input:
 </div>
 """
                     st.markdown(html_card, unsafe_allow_html=True)
+
 
