@@ -314,12 +314,15 @@ JSON Structure:
 """
 
 def get_hybrid_response(messages):
-    # 1. Try Groq First (Faster)
+    # 1. Try Groq First
     if groq_key:
         try:
             llm = ChatGroq(temperature=0, groq_api_key=groq_key, model_name="llama-3.3-70b-versatile")
             return llm.invoke(messages), "Groq"
         except Exception as e:
+            # هنا التعديل: بنطبع الخطأ عشان نشوفه
+            print(f"Groq Error: {e}")
+            st.error(f"Groq Error: {e}") # هيظهرلك الخطأ على الشاشة
             pass 
     
     # 2. Try Google Gemini (Backup)
@@ -328,9 +331,10 @@ def get_hybrid_response(messages):
             llm = ChatGoogleGenerativeAI(temperature=0, google_api_key=google_key, model="gemini-1.5-flash")
             return llm.invoke(messages), "Gemini"
         except Exception as e:
+            st.error(f"Gemini Error: {e}") # هيظهرلك الخطأ على الشاشة
             return None, str(e)
             
-    return None, "No valid API keys"
+    return None, "No valid API keys found in Secrets"
 
 # ---------------------------------------------------------
 # 5. UI RENDERER
@@ -422,3 +426,4 @@ if check_btn and user_input:
                 st.warning("⚠️ Please provide a valid API Key to continue.")
         except Exception as e:
             st.error(f"Error: {e}")
+
