@@ -1,4 +1,7 @@
 streamlit
 langchain-groq
 langchain-google-genai
+
 langchain-core
+streamlit
+langchain-huggingface
