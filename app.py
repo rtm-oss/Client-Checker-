@@ -26,10 +26,7 @@ st.markdown("""
     .val-error { color: #ff8a80; font-weight: bold; text-shadow: 0 0 8px rgba(255, 138, 128, 0.3); }
     .val-neutral { color: #b0bec5; }
     .val-list { color: #fff59d; font-size: 0.9rem; font-weight: 600; text-align: right; flex: 1; margin-left: 10px; line-height: 1.3; }
-    
-    /* New Style for Age Note */
     .age-note { font-size: 0.75rem; color: #ffab91; text-align: right; margin-top: -5px; font-style: italic;}
-
     .combo-box { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
     .combo-green { background: rgba(27, 94, 32, 0.4); border: 1px solid #00e676; color: #b9f6ca; }
     .combo-orange { background: #FFC50F; border: 1px solid #FFD740; color: #000000; box-shadow: 0 0 10px rgba(255, 197, 15, 0.2); }
@@ -54,6 +51,7 @@ DL_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "ID", "IL", "
 MEDX_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MS", "MT", "NE", "NH", "NJ", "NM", "NC", "OH", "NY", "RI", "SC", "ID", "TN", "TX", "VA", "VT", "SD", "UT", "WI", "WY", "WV", "WA", "OR", "MO"]
 WE_STATES = ["VT", "NH", "ME", "MA", "RI", "DE", "NY", "ID", "UT", "MT", "WY", "SD", "NE", "KS", "IA", "CA", "MO", "AZ", "WA", "LA", "WI", "MS", "IN", "WV", "VA", "SC", "MI", "TX", "NC", "AK", "NM"]
 
+# Updated CAMPAIGNS with Status
 CAMPAIGNS = [
     {
         "name": "PC-Telemed",
@@ -65,7 +63,7 @@ CAMPAIGNS = [
         "states": PC_STATES,
         "min_age": 65,
         "max_age": 84,
-        "age_note": "Limit: 65-84 years old" # Note added
+        "age_note": "Limit: 65-84 years old"
     },
     {
         "name": "DL-PCP",
@@ -96,8 +94,8 @@ CAMPAIGNS = [
         "combo_list": ["WRISTS + ANKLES", "ELBOWS + ANKLES", "WRISTS + ELBOWS", "WRISTS + SHOULDERS", "ELBOWS + SHOULDERS", "NECK + SHOULDER"],
         "states": WE_STATES,
         "min_age": 0,
-        "max_age": 89, # 🔥 Changed to 89 to enforce (89 and 11 months max)
-        "age_note": "Limit: 89 years & 11 months" # 🔥 The requested Note
+        "max_age": 89, 
+        "age_note": "Limit: Max 89 years & 11 months" # 🔥 Updated Note
     },
     {
         "name": "CGM-PCP",
@@ -119,27 +117,47 @@ CAMPAIGNS = [
 # 3. HELPER FUNCTIONS
 # ---------------------------------------------------------
 def parse_input(user_input):
+    """
+    Parses '11-1938' (MM-YYYY) or '1938' (YYYY).
+    """
     clean_text = user_input.upper()
     
-    # 1. FIND YEAR
-    year_match = re.search(r'(19|20)\d{2}', clean_text)
-    year = int(year_match.group(0)) if year_match else None
+    # 1. FIND DATE (MM-YYYY or MM/YYYY or just YYYY)
+    year = None
+    month = 1 # Default to January if not provided
     
-    text_without_year = clean_text
-    if year:
-        text_without_year = text_without_year.replace(str(year), " ")
+    # Check for MM-YYYY or MM/YYYY pattern first
+    date_match = re.search(r'\b(0?[1-9]|1[0-2])[-/](19|20)\d{2}\b', clean_text)
+    
+    if date_match:
+        # Extract Month and Year
+        date_str = date_match.group(0)
+        if '-' in date_str: parts = date_str.split('-')
+        else: parts = date_str.split('/')
+        month = int(parts[0])
+        year = int(parts[1])
+        # Remove this date string from text
+        text_without_date = clean_text.replace(date_str, " ")
+    else:
+        # Fallback to finding just YYYY
+        year_match = re.search(r'(19|20)\d{2}', clean_text)
+        if year_match:
+            year = int(year_match.group(0))
+            text_without_date = clean_text.replace(str(year), " ")
+        else:
+            text_without_date = clean_text # No date found
 
     # 2. FIND STATE
     state = None
     found_states = []
     for s in ALL_STATES:
-        if s in text_without_year:
+        if s in text_without_date:
             found_states.append(s)
             
     if found_states:
         best_state = None
         for s in found_states:
-            if re.search(r'\b' + s + r'\b', text_without_year):
+            if re.search(r'\b' + s + r'\b', text_without_date):
                 best_state = s
                 break
         state = best_state if best_state else found_states[0]
@@ -147,37 +165,63 @@ def parse_input(user_input):
     # 3. EXTRACT COMBO
     combo_text = clean_text
     if state: combo_text = combo_text.replace(state, "")
-    if year: combo_text = combo_text.replace(str(year), "")
+    # Remove the exact date format found
+    if date_match: combo_text = combo_text.replace(date_match.group(0), "")
+    elif year: combo_text = combo_text.replace(str(year), "")
     
     combo_text = re.sub(r'[^A-Z0-9\+]', ' ', combo_text)
     combo_text = re.sub(r'\s+', ' ', combo_text).strip()
     
     if not combo_text: combo_text = "None"
     
-    return state, year, combo_text
+    return state, year, month, combo_text
 
-def calculate_age(birth_year):
-    current_year = datetime.datetime.now().year
-    return current_year - birth_year
+def calculate_precise_age(birth_year, birth_month):
+    """
+    Returns (years, months)
+    """
+    today = datetime.date.today()
+    
+    # Calculate years
+    age_years = today.year - birth_year
+    
+    # Adjust based on month
+    if today.month < birth_month:
+        age_years -= 1
+        age_months = 12 - (birth_month - today.month)
+    else:
+        age_months = today.month - birth_month
+        
+    return age_years, age_months
 
-def check_campaign_eligibility(campaign, state, age):
+def check_campaign_eligibility(campaign, state, age_y, age_m):
     reasons = []
     is_eligible = True
     
+    # 1. State Check
     if state not in campaign["states"]:
         is_eligible = False
         reasons.append(f"State {state} is NOT in approved list.")
     
-    # Age Check Logic
-    if age < campaign["min_age"] or age > campaign["max_age"]:
-        is_eligible = False
-        # Custom message if it's WE-PCP to match user request
-        if campaign["name"] == "WE-PCP" and age > campaign["max_age"]:
-             reasons.append(f"Age {age} exceeds limit (Max 89y 11m).")
-        elif campaign["max_age"] < 150:
-            reasons.append(f"Age {age} is out of range ({campaign['min_age']}-{campaign['max_age']}).")
-        else:
-            reasons.append(f"Age {age} is invalid.")
+    # 2. Age Check (Precise Logic)
+    # Special Logic for WE-PCP (Max 89y 11m)
+    if campaign["name"] == "WE-PCP":
+        # Limit in total months: (89 * 12) + 11 = 1079 months
+        max_months_limit = (89 * 12) + 11
+        patient_months = (age_y * 12) + age_m
+        
+        if patient_months > max_months_limit:
+            is_eligible = False
+            reasons.append(f"Age exceeds limit (Max 89y 11m).")
+            
+    # Standard Logic for others
+    else:
+        if age_y < campaign["min_age"] or age_y > campaign["max_age"]:
+            is_eligible = False
+            if campaign["max_age"] < 150:
+                reasons.append(f"Age {age_y} is out of range ({campaign['min_age']}-{campaign['max_age']}).")
+            else:
+                reasons.append(f"Age {age_y} is invalid.")
             
     if is_eligible:
         return True, "Patient meets all demographics criteria (State & Age)."
@@ -210,27 +254,27 @@ st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_h
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    user_input = st.text_input("Search Patient", placeholder="e.g. NY 1950")
+    user_input = st.text_input("Search Patient", placeholder="e.g. 11-1938 NY BB (or just 1938)")
     check_btn = st.button("Check Eligibility Now")
 
 if check_btn and user_input:
     with st.spinner("Analyzing Rules..."):
-        state, year, combo_raw = parse_input(user_input)
+        state, year, month, combo_raw = parse_input(user_input)
         
         if not state or not year:
-            st.error("❌ Could not detect State (e.g. NY) or Birth Year (e.g. 1950). Please check format.")
+            st.error("❌ Could not detect State (e.g. NY) or Year (e.g. 1950). Check format.")
         else:
-            age = calculate_age(year)
+            age_y, age_m = calculate_precise_age(year, month)
             
             combo_display = f" | Combo: {combo_raw}" if combo_raw and combo_raw != "None" else ""
-            st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age} | State {state}{combo_display}</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age_y}y {age_m}m | State {state}{combo_display}</div>""", unsafe_allow_html=True)
             
             active_campaigns = [c for c in CAMPAIGNS if c.get("status") == "Active"]
             
             cols = st.columns(3)
             for idx, campaign in enumerate(active_campaigns):
                 
-                is_eligible, reason_summary = check_campaign_eligibility(campaign, state, age)
+                is_eligible, reason_summary = check_campaign_eligibility(campaign, state, age_y, age_m)
                 
                 if is_eligible:
                     status_html = '<span class="badge badge-success">✅ ELIGIBLE</span>'
@@ -241,7 +285,15 @@ if check_btn and user_input:
                     status_html = '<span class="badge badge-error">❌ NOT ELIGIBLE</span>'
                     border_style = "border-top: 5px solid #ff5252;"
                     state_valid = state in campaign["states"]
-                    age_valid = campaign["min_age"] <= age <= campaign["max_age"]
+                    
+                    # Age valid visualization logic
+                    if campaign["name"] == "WE-PCP":
+                        # Visual check for WE-PCP
+                        limit_months = (89 * 12) + 11
+                        pat_months = (age_y * 12) + age_m
+                        age_valid = pat_months <= limit_months
+                    else:
+                        age_valid = campaign["min_age"] <= age_y <= campaign["max_age"]
 
                 def get_row_html(label, val, is_valid):
                     icon = "✅" if is_valid else "❌"
@@ -250,9 +302,8 @@ if check_btn and user_input:
 
                 rows_html = ""
                 rows_html += get_row_html("🗺️ State", state, state_valid)
-                rows_html += get_row_html("🎂 Age", age, age_valid)
+                rows_html += get_row_html("🎂 Age", f"{age_y}y {age_m}m", age_valid)
                 
-                # 🔥 Age Note Injection
                 if "age_note" in campaign:
                     rows_html += f'<div class="age-note">⚠️ {campaign["age_note"]}</div>'
 
