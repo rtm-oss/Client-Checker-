@@ -34,6 +34,7 @@ st.markdown("""
         text-shadow: 0 10px 30px rgba(0, 200, 83, 0.2);
     }
 
+    /* Glass Card */
     .glass-card {
         background: rgba(22, 27, 34, 0.8);
         backdrop-filter: blur(12px);
@@ -66,6 +67,7 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
+    /* Summary Box */
     .summary-box {
         text-align: center;
         background: rgba(33, 150, 243, 0.15);
@@ -79,6 +81,7 @@ st.markdown("""
         box-shadow: 0 0 20px rgba(33, 150, 243, 0.2);
     }
 
+    /* Badges */
     .badge {
         display: block;
         margin: 0 auto 20px auto;
@@ -102,6 +105,7 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(255, 82, 82, 0.4);
     }
 
+    /* Check Items */
     .check-item {
         display: flex;
         justify-content: space-between;
@@ -117,6 +121,7 @@ st.markdown("""
     .val-neutral { color: #b0bec5; }
     .val-list { color: #fff59d; font-size: 0.9rem; font-weight: 600; text-align: right; flex: 1; margin-left: 10px; line-height: 1.3; }
 
+    /* Combo Boxes */
     .combo-box {
         margin-top: 15px;
         padding: 12px;
@@ -127,7 +132,6 @@ st.markdown("""
         align-items: center;
         gap: 10px;
     }
-    
     .combo-green { background: rgba(27, 94, 32, 0.4); border: 1px solid #00e676; color: #b9f6ca; }
     .combo-orange { background: #FFC50F; border: 1px solid #FFD740; color: #000000; box-shadow: 0 0 10px rgba(255, 197, 15, 0.2); }
     .combo-blue { background: rgba(2, 119, 189, 0.4); border: 1px solid #29b6f6; color: #e1f5fe; }
@@ -268,7 +272,6 @@ google_key = st.secrets.get("GOOGLE_API_KEY")
 if not groq_key or not google_key:
     with st.sidebar:
         st.header("⚙️ API Keys")
-        st.caption("For deployment, use Secrets.")
         if not groq_key: groq_key = st.text_input("Groq API Key", type="password")
         if not google_key: google_key = st.text_input("Google API Key", type="password")
 
@@ -314,27 +317,25 @@ JSON Structure:
 """
 
 def get_hybrid_response(messages):
-    # 1. Try Groq First
+    # 1. Try Groq (Primary - Fast)
     if groq_key:
         try:
             llm = ChatGroq(temperature=0, groq_api_key=groq_key, model_name="llama-3.3-70b-versatile")
             return llm.invoke(messages), "Groq"
         except Exception as e:
-            # هنا التعديل: بنطبع الخطأ عشان نشوفه
-            print(f"Groq Error: {e}")
-            st.error(f"Groq Error: {e}") # هيظهرلك الخطأ على الشاشة
+            # Groq failed (Limit Reached), moving to Gemini...
             pass 
     
-    # 2. Try Google Gemini (Backup)
+    # 2. Try Gemini (Backup - Reliable)
     if google_key:
         try:
-            llm = ChatGoogleGenerativeAI(temperature=0, google_api_key=google_key, model="gemini-1.5-flash")
+            # استخدام موديل "gemini-pro" لأنه الأكثر استقراراً في المكتبات
+            llm = ChatGoogleGenerativeAI(temperature=0, google_api_key=google_key, model="gemini-pro")
             return llm.invoke(messages), "Gemini"
         except Exception as e:
-            st.error(f"Gemini Error: {e}") # هيظهرلك الخطأ على الشاشة
             return None, str(e)
             
-    return None, "No valid API keys found in Secrets"
+    return None, "No valid API keys"
 
 # ---------------------------------------------------------
 # 5. UI RENDERER
@@ -392,7 +393,7 @@ if check_btn and user_input:
                         rows_html += format_row("🎂 Age", bd.get('age', {}))
                         rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{provided_items}</span></div>'
 
-                        # 3. Combo Rules (3 Colors)
+                        # 3. Combo Rules (3 Colors Logic)
                         combo_text = item.get("combo_info_text", "no combo")
                         
                         if "not accepted" in combo_text.lower():
@@ -421,9 +422,8 @@ if check_btn and user_input:
     """
                             st.markdown(html_card, unsafe_allow_html=True)
                 else:
-                    st.warning("⚠️ Please provide a valid API Key to continue.")
+                    st.warning("⚠️ AI Response Error. Please Try Again.")
             else:
-                st.warning("⚠️ Please provide a valid API Key to continue.")
+                st.error("Failed to get response.")
         except Exception as e:
             st.error(f"Error: {e}")
-
