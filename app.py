@@ -162,4 +162,95 @@ Return JSON with this schema:
             "provided_braces": "str",
             "is_eligible": bool,
             "breakdown": {{
-                "state": {{ "text
+                "state": {{ "text": "str", "valid": bool }},
+                "age": {{ "text": "str", "valid": bool }}
+            }},
+            "combo_info_text": "str",
+            "reason_summary": "str"
+        }}
+    ]
+}}
+"""
+
+# ---------------------------------------------------------
+# 4. UI RENDERER
+# ---------------------------------------------------------
+st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    user_input = st.text_input("Search Patient", placeholder="e.g. NY 1938 wants BB")
+    check_btn = st.button("Check Eligibility Now")
+
+if check_btn and user_input:
+    with st.spinner("Processing..."):
+        try:
+            full_prompt = f"System: {system_prompt}\nUser: {user_input}"
+            response = model.generate_content(full_prompt)
+            
+            # Simple JSON parsing
+            result_json = json.loads(response.text)
+
+            if result_json:
+                st.markdown(f"""<div class="summary-box">📋 {result_json.get('summary', 'Report')}</div>""", unsafe_allow_html=True)
+
+                results = result_json.get("results", [])
+                cols = st.columns(3)
+                
+                for idx, item in enumerate(results):
+                    if item["is_eligible"]:
+                        status_html = '<span class="badge badge-success">✅ ELIGIBLE</span>'
+                        border_style = "border-top: 5px solid #00e676;" 
+                    else:
+                        status_html = '<span class="badge badge-error">❌ NOT ELIGIBLE</span>'
+                        border_style = "border-top: 5px solid #ff5252;" 
+
+                    bd = item['breakdown']
+                    provided_items = item.get('provided_braces', 'N/A')
+                    link_url = item.get('link', '#')
+                    
+                    def format_row(label, data):
+                        text = str(data.get('text', 'N/A'))
+                        is_valid = data.get('valid')
+                        if is_valid is True:
+                            val_html = f'<span class="val-success">{text} ✅</span>'
+                        elif is_valid is False:
+                            val_html = f'<span class="val-error">{text} ❌</span>'
+                        else:
+                            val_html = f'<span class="val-neutral">{text} ➖</span>'
+                        return f'<div class="check-item"><span class="check-label">{label}</span>{val_html}</div>'
+
+                    rows_html = ""
+                    rows_html += format_row("🗺️ State", bd.get('state', {}))
+                    rows_html += format_row("🎂 Age", bd.get('age', {}))
+                    rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{provided_items}</span></div>'
+
+                    combo_text = item.get("combo_info_text", "no combo")
+                    if "not accepted" in combo_text.lower():
+                        css_class = "combo-orange"
+                        icon = "⚠️"
+                    elif "no combo" in combo_text.lower():
+                        css_class = "combo-blue"
+                        icon = "ℹ️"
+                    else:
+                        css_class = "combo-green"
+                        icon = "✅"
+                        
+                    combo_html = f'<div class="combo-box {css_class}">{icon} {combo_text}</div>'
+
+                    with cols[idx % 3]:
+                        html_card = f"""
+    <div class="glass-card" style="{border_style}">
+        <h3 class="card-title">{item['campaign']}</h3>
+        {status_html}
+        <div style="margin-bottom: 10px;">{rows_html}</div>
+        {combo_html}
+        <div class="reason-text">💡 {item['reason_summary']}</div>
+        <a href="{link_url}" target="_blank" class="portal-link">🔗 Open Portal</a>
+    </div>
+    """
+                        st.markdown(html_card, unsafe_allow_html=True)
+            else:
+                st.error("No response generated.")
+        except Exception as e:
+            st.error(f"System Error: {e}")
