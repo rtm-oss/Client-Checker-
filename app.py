@@ -101,7 +101,7 @@ CAMPAIGNS = [
         "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-pc-telemed?authuser=0",
         "resource_link": "https://data.hrsa.gov/tools/medicare/telehealth", # New Link
-        "resource_label": "🛠️ Check Medicare",
+        "resource_label": "🛠️ Verification Link",
         "provided": "BB, BKB, BB + Single Knee",
         "combo_type": "accepted",
         "combo_list": ["BB", "Both Knees", "BB + Single Knee"],
@@ -355,3 +355,4 @@ if check_btn and user_input:
 </div>
 """
                     st.markdown(html_card, unsafe_allow_html=True)
+
