@@ -1,10 +1,8 @@
 import streamlit as st
 import json
 import datetime
-import re
-# استيراد مكتبة جوجل بالطريقة الحديثة
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage
+import google.generativeai as genai
+from google.ai.generativelanguage_v1beta.types import content
 
 # ---------------------------------------------------------
 # 1. CSS & STYLING (PURE BLACK UI ⚫)
@@ -108,19 +106,7 @@ campaigns_data = [
 ]
 
 # ---------------------------------------------------------
-# 3. HELPER FUNCTION
-# ---------------------------------------------------------
-def clean_and_parse_json(text):
-    try:
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
-        return None
-    except:
-        return None
-
-# ---------------------------------------------------------
-# 4. API LOGIC (Gemini 1.5 Flash ⚡)
+# 3. API LOGIC (Google Native - No LangChain)
 # ---------------------------------------------------------
 google_key = st.secrets.get("GOOGLE_API_KEY")
 
@@ -130,8 +116,26 @@ if not google_key:
         google_key = st.text_input("Google API Key", type="password")
 
 if not google_key:
-    st.warning("⚠️ Please enter Google API Key to proceed.")
+    st.warning("⚠️ Please enter Google API Key.")
     st.stop()
+
+# Configure GenAI
+genai.configure(api_key=google_key)
+
+# Setup Model - Using flash which is free and fast
+# Using JSON Schema for 100% Reliability
+generation_config = {
+  "temperature": 0.0,
+  "top_p": 0.95,
+  "top_k": 64,
+  "max_output_tokens": 8192,
+  "response_mime_type": "application/json",
+}
+
+model = genai.GenerativeModel(
+  model_name="gemini-1.5-flash",
+  generation_config=generation_config,
+)
 
 current_year = datetime.datetime.now().year
 data_context = json.dumps(campaigns_data)
@@ -147,128 +151,15 @@ INSTRUCTIONS:
 3. **ELIGIBILITY LOGIC:** `is_eligible` is TRUE ONLY IF `state_valid` is true AND `age_valid` is true.
 4. **DATA OUTPUT:** Extract `link` & `provided_braces` exactly from DB.
 5. **COMBO INFO:** If "accepted_combos" -> "Accepted: [...]". If "not_accepted_combos" -> "Not Accepted: [...]". Else -> "no combo".
-6. **Output Format:** JSON Object ONLY.
 
-JSON Structure:
+Return JSON with this schema:
 {{
-    "summary": "Patient Summary (calculated age)",
+    "summary": "str",
     "results": [
         {{
-            "campaign": "Campaign Name",
-            "link": "URL",
-            "provided_braces": "String",
-            "is_eligible": true/false,
+            "campaign": "str",
+            "link": "str",
+            "provided_braces": "str",
+            "is_eligible": bool,
             "breakdown": {{
-                "state": {{ "text": "NY", "valid": true }},
-                "age": {{ "text": "87", "valid": false }} 
-            }},
-            "combo_info_text": "Rules text",
-            "reason_summary": "Explanation"
-        }}
-    ]
-}}
-"""
-
-def get_gemini_response(messages):
-    try:
-        # استخدام gemini-1.5-flash الأحدث
-        llm = ChatGoogleGenerativeAI(
-            temperature=0, 
-            google_api_key=google_key, 
-            model="gemini-1.5-flash",
-            transport="rest"
-        )
-        return llm.invoke(messages), "Gemini"
-    except Exception as e:
-        return None, str(e)
-
-# ---------------------------------------------------------
-# 5. UI RENDERER
-# ---------------------------------------------------------
-st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_html=True)
-
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    user_input = st.text_input("Search Patient", placeholder="e.g. NY 1938 wants BB")
-    check_btn = st.button("Check Eligibility Now")
-
-if check_btn and user_input:
-    with st.spinner("Processing Data..."):
-        try:
-            messages = [SystemMessage(content=system_prompt), HumanMessage(content=user_input)]
-            
-            response, source = get_gemini_response(messages)
-            
-            if response:
-                result_json = clean_and_parse_json(response.content)
-
-                if result_json:
-                    st.markdown(f"""<div class="summary-box">📋 {result_json.get('summary', 'Report')}</div>""", unsafe_allow_html=True)
-
-                    results = result_json.get("results", [])
-                    cols = st.columns(3)
-                    
-                    for idx, item in enumerate(results):
-                        # 1. Status
-                        if item["is_eligible"]:
-                            status_html = '<span class="badge badge-success">✅ ELIGIBLE</span>'
-                            border_style = "border-top: 5px solid #00e676;" 
-                        else:
-                            status_html = '<span class="badge badge-error">❌ NOT ELIGIBLE</span>'
-                            border_style = "border-top: 5px solid #ff5252;" 
-
-                        # 2. Rows
-                        bd = item['breakdown']
-                        provided_items = item.get('provided_braces', 'N/A')
-                        link_url = item.get('link', '#')
-                        
-                        def format_row(label, data):
-                            text = str(data.get('text', 'N/A'))
-                            is_valid = data.get('valid')
-                            if is_valid is True:
-                                val_html = f'<span class="val-success">{text} ✅</span>'
-                            elif is_valid is False:
-                                val_html = f'<span class="val-error">{text} ❌</span>'
-                            else:
-                                val_html = f'<span class="val-neutral">{text} ➖</span>'
-                            return f'<div class="check-item"><span class="check-label">{label}</span>{val_html}</div>'
-
-                        rows_html = ""
-                        rows_html += format_row("🗺️ State", bd.get('state', {}))
-                        rows_html += format_row("🎂 Age", bd.get('age', {}))
-                        rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{provided_items}</span></div>'
-
-                        # 3. Combo Rules
-                        combo_text = item.get("combo_info_text", "no combo")
-                        
-                        if "not accepted" in combo_text.lower():
-                            css_class = "combo-orange"
-                            icon = "⚠️"
-                        elif "no combo" in combo_text.lower():
-                            css_class = "combo-blue"
-                            icon = "ℹ️"
-                        else:
-                            css_class = "combo-green"
-                            icon = "✅"
-                            
-                        combo_html = f'<div class="combo-box {css_class}">{icon} {combo_text}</div>'
-
-                        # 4. Render
-                        with cols[idx % 3]:
-                            html_card = f"""
-    <div class="glass-card" style="{border_style}">
-        <h3 class="card-title">{item['campaign']}</h3>
-        {status_html}
-        <div style="margin-bottom: 10px;">{rows_html}</div>
-        {combo_html}
-        <div class="reason-text">💡 {item['reason_summary']}</div>
-        <a href="{link_url}" target="_blank" class="portal-link">🔗 Open Portal</a>
-    </div>
-    """
-                            st.markdown(html_card, unsafe_allow_html=True)
-                else:
-                    st.warning("⚠️ AI didn't return valid JSON. Please try again.")
-            else:
-                st.error(f"Failed to get response: {source}")
-        except Exception as e:
-            st.error(f"Error: {e}")
+                "state": {{ "text
