@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import datetime
 import re
-from langchain_huggingface import HuggingFaceEndpoint
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 # ---------------------------------------------------------
@@ -114,26 +114,23 @@ def clean_and_parse_json(text):
         return None
 
 # ---------------------------------------------------------
-# 4. API LOGIC (Hugging Face Version 🫂)
+# 4. API LOGIC (Gemini Stable Version 🌟)
 # ---------------------------------------------------------
-hf_key = st.secrets.get("HUGGINGFACEHUB_API_TOKEN")
+google_key = st.secrets.get("GOOGLE_API_KEY")
 
-if not hf_key:
+if not google_key:
     with st.sidebar:
         st.header("⚙️ API Keys")
-        hf_key = st.text_input("Hugging Face API Token", type="password")
+        google_key = st.text_input("Google API Key", type="password")
 
-if not hf_key:
-    st.warning("⚠️ Please enter Hugging Face Token.")
+if not google_key:
+    st.warning("⚠️ Please enter Google API Key to proceed.")
     st.stop()
 
 current_year = datetime.datetime.now().year
 data_context = json.dumps(campaigns_data)
 
-# ✅ استخدام موديل Mistral v0.2 لأنه الأكثر استقراراً في الباقة المجانية
-repo_id = "mistralai/Mistral-7B-Instruct-v0.2"
-
-# --- PROMPT ---
+# --- STRICT MATH PROMPT ---
 system_prompt = f"""
 You are a Medical Eligibility API.
 Context: Current Year is {current_year}.
@@ -178,21 +175,18 @@ with col2:
     check_btn = st.button("Check Eligibility Now")
 
 if check_btn and user_input:
-    with st.spinner("Processing with AI..."):
+    with st.spinner("Processing with Gemini..."):
         try:
-            # Initialize HF Endpoint
-            llm = HuggingFaceEndpoint(
-                repo_id=repo_id, 
-                temperature=0.1, 
-                huggingfacehub_api_token=hf_key,
-                timeout=120
+            # استخدام موديل gemini-pro المستقر جداً
+            llm = ChatGoogleGenerativeAI(
+                temperature=0, 
+                google_api_key=google_key, 
+                model="gemini-pro" 
             )
             
-            # Simple Prompt Format for Mistral v0.2
-            full_prompt = f"[INST] {system_prompt} \n\n User Input: {user_input} [/INST]"
-            
-            response = llm.invoke(full_prompt)
-            result_json = clean_and_parse_json(response)
+            messages = [SystemMessage(content=system_prompt), HumanMessage(content=user_input)]
+            response = llm.invoke(messages)
+            result_json = clean_and_parse_json(response.content)
 
             if result_json:
                 st.markdown(f"""<div class="summary-box">📋 {result_json.get('summary', 'Report')}</div>""", unsafe_allow_html=True)
@@ -259,6 +253,6 @@ if check_btn and user_input:
 """
                         st.markdown(html_card, unsafe_allow_html=True)
             else:
-                st.warning("⚠️ AI Response Error. Try again.")
+                st.warning("⚠️ AI didn't return valid JSON. Please try again.")
         except Exception as e:
             st.error(f"Error: {e}")
