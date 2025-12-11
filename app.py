@@ -1,8 +1,6 @@
 import streamlit as st
-import json
 import datetime
-import google.generativeai as genai
-from google.ai.generativelanguage_v1beta.types import content
+import re
 
 # ---------------------------------------------------------
 # 1. CSS & STYLING (PURE BLACK UI ⚫)
@@ -43,134 +41,151 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. FULL DATABASE
+# 2. RULE-BASED DATABASE (Logic Engine)
 # ---------------------------------------------------------
-campaigns_data = [
+# Define States Lists
+ALL_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"]
+
+# Specific Lists
+PC_STATES = ["DE", "ME", "MD", "MA", "NJ", "NY", "PA", "VT", "IL", "MI", "OH", "WI", "FL", "MS", "NC", "VA", "WV", "AZ", "KS", "SD", "WA", "WY"]
+DL_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "NE", "NH", "NJ", "NM", "NY", "OH", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "VI", "WA", "WI", "WV", "WY"]
+MEDX_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MS", "MT", "NE", "NH", "NJ", "NM", "NC", "OH", "NY", "RI", "SC", "ID", "TN", "TX", "VA", "VT", "SD", "UT", "WI", "WY", "WV", "WA", "OR", "MO"]
+WE_STATES = ["VT", "NH", "ME", "MA", "RI", "DE", "NY", "ID", "UT", "MT", "WY", "SD", "NE", "KS", "IA", "CA", "MO", "AZ", "WA", "LA", "WI", "MS", "IN", "WV", "VA", "SC", "MI", "TX", "NC", "AK", "NM"]
+
+# Campaigns DB
+CAMPAIGNS = [
     {
         "name": "PC-Telemed",
         "status": "Active",
-        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-pc-telemed?authuser=0", 
-        "criteria": {
-            "age_limit": "65-84 years old",
-            "dob_range": "1941 - 1960",
-            "good_states": ["DE", "ME", "MD", "MA", "NJ", "NY", "PA", "VT", "IL", "MI", "OH", "WI", "FL", "MS", "NC", "VA", "WV", "AZ", "KS", "SD", "WA", "WY"],
-            "provided_braces": "BB, BKB, BB + Single Knee",
-            "accepted_combos": ["BB", "Both Knees", "BB + Single Knee"]
-        }
+        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-pc-telemed?authuser=0",
+        "provided": "BB, BKB, BB + Single Knee",
+        "combo_type": "accepted",
+        "combo_list": ["BB", "Both Knees", "BB + Single Knee"],
+        "states": PC_STATES,
+        "min_age": 65,
+        "max_age": 84
     },
     {
         "name": "DL-PCP",
         "status": "Active",
-        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-dl-pcp?authuser=0", 
-        "criteria": {
-            "age_limit": "None (No age limit)",
-            "good_states": ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "NE", "NH", "NJ", "NM", "NY", "OH", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "VI", "WA", "WI", "WV", "WY"],
-            "provided_braces": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow"
-        }
+        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-dl-pcp?authuser=0",
+        "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
+        "combo_type": "none", # No specific rules
+        "states": DL_STATES,
+        "min_age": 0,
+        "max_age": 200 # No limit
     },
     {
         "name": "MEDX-PCP",
         "status": "Active",
-        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-medx-chasing?authuser=0", 
-        "criteria": {
-            "age_limit": "None (No age limit)",
-            "good_states": ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MS", "MT", "NE", "NH", "NJ", "NM", "NC", "OH", "NY", "RI", "SC", "ID", "TN", "TX", "VA", "VT", "SD", "UT", "WI", "WY", "WV", "WA", "OR", "MO"],
-            "provided_braces": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow"
-        }
+        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-medx-chasing?authuser=0",
+        "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
+        "combo_type": "none",
+        "states": MEDX_STATES,
+        "min_age": 0,
+        "max_age": 200
     },
     {
         "name": "WE-PCP",
         "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/2-we-pcp?authuser=0",
-        "criteria": {
-            "age_limit": "Max 90 years",
-            "good_states": ["VT", "NH", "ME", "MA", "RI", "DE", "NY", "ID", "UT", "MT", "WY", "SD", "NE", "KS", "IA", "CA", "MO", "AZ", "WA", "LA", "WI", "MS", "IN", "WV", "VA", "SC", "MI", "TX", "NC", "AK", "NM"],
-            "provided_braces": "Back, Knee, Wrist, Shoulder, Elbow, Ankle, Neck",
-            "not_accepted_combos": ["WRISTS + ANKLES", "ELBOWS + ANKLES", "WRISTS + ELBOWS", "WRISTS + SHOULDERS", "ELBOWS + SHOULDERS", "NECK + SHOULDER"]
-        }
+        "provided": "Back, Knee, Wrist, Shoulder, Elbow, Ankle, Neck",
+        "combo_type": "not_accepted",
+        "combo_list": ["WRISTS + ANKLES", "ELBOWS + ANKLES", "WRISTS + ELBOWS", "WRISTS + SHOULDERS", "ELBOWS + SHOULDERS", "NECK + SHOULDER"],
+        "states": WE_STATES,
+        "min_age": 0,
+        "max_age": 90
     },
     {
         "name": "CGM-PCP",
         "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/3-cgm-pcp?authuser=0",
-        "criteria": {
-            "age_limit": "None",
-            "good_states": "All States",
-            "provided_braces": "Dexcom (CGM)",
-            "provided_cgm": "Dexcom"
-        }
-    },
-    {"name": "Medicare-Fit", "status": "Inactive", "criteria": {}},
-    {"name": "PPO-CGM", "status": "Inactive", "criteria": {}},
-    {"name": "Fast-Telemed", "status": "Inactive", "criteria": {}}
+        "provided": "Dexcom (CGM)",
+        "combo_type": "none",
+        "states": ALL_STATES,
+        "min_age": 0,
+        "max_age": 200
+    }
 ]
 
 # ---------------------------------------------------------
-# 3. API LOGIC (Google Native - No LangChain)
+# 3. HELPER FUNCTIONS (The Brain 🧠)
 # ---------------------------------------------------------
-google_key = st.secrets.get("GOOGLE_API_KEY")
+def parse_input(user_input):
+    """
+    Extracts State, Birth Year, and Combo text from user input using Regex.
+    Example: "NY 1938 wants BB" -> State: NY, Year: 1938, Combo: wants BB
+    """
+    user_input = user_input.upper()
+    
+    # 1. Find State (2 letters)
+    state_match = re.search(r'\b[A-Z]{2}\b', user_input)
+    state = state_match.group(0) if state_match else None
+    
+    # 2. Find Year (4 digits, starting with 19 or 20)
+    year_match = re.search(r'\b(19|20)\d{2}\b', user_input)
+    year = int(year_match.group(0)) if year_match else None
+    
+    # 3. Everything else is "Combo" (cleaned)
+    combo_text = user_input
+    if state: combo_text = combo_text.replace(state, "")
+    if year: combo_text = str(combo_text).replace(str(year), "")
+    
+    combo_text = re.sub(r'\s+', ' ', combo_text).strip() # Remove extra spaces
+    if not combo_text: combo_text = "None"
+    
+    return state, year, combo_text
 
-if not google_key:
-    with st.sidebar:
-        st.header("⚙️ API Keys")
-        google_key = st.text_input("Google API Key", type="password")
+def calculate_age(birth_year):
+    current_year = datetime.datetime.now().year
+    return current_year - birth_year
 
-if not google_key:
-    st.warning("⚠️ Please enter Google API Key.")
-    st.stop()
+def check_campaign_eligibility(campaign, state, age):
+    """
+    Checks if patient is eligible based on Hard Logic.
+    Returns: is_eligible (bool), reason_text (str)
+    """
+    reasons = []
+    is_eligible = True
+    
+    # 1. Check State
+    if state not in campaign["states"]:
+        is_eligible = False
+        reasons.append(f"State {state} is NOT in approved list.")
+    
+    # 2. Check Age
+    if age < campaign["min_age"] or age > campaign["max_age"]:
+        is_eligible = False
+        if campaign["max_age"] < 150:
+            reasons.append(f"Age {age} is out of range ({campaign['min_age']}-{campaign['max_age']}).")
+        else:
+            reasons.append(f"Age {age} is invalid.")
+            
+    # Success message
+    if is_eligible:
+        return True, "Patient meets all demographics criteria (State & Age)."
+    else:
+        return False, " & ".join(reasons)
 
-# Configure GenAI
-genai.configure(api_key=google_key)
-
-# Setup Model - Using flash which is free and fast
-# Using JSON Schema for 100% Reliability
-generation_config = {
-  "temperature": 0.0,
-  "top_p": 0.95,
-  "top_k": 64,
-  "max_output_tokens": 8192,
-  "response_mime_type": "application/json",
-}
-
-model = genai.GenerativeModel(
-  model_name="gemini-1.5-flash",
-  generation_config=generation_config,
-)
-
-current_year = datetime.datetime.now().year
-data_context = json.dumps(campaigns_data)
-
-system_prompt = f"""
-You are a Medical Eligibility API.
-Context: Current Year is {current_year}.
-Database: {data_context}
-
-INSTRUCTIONS:
-1. Ignore "Inactive" campaigns.
-2. **STRICT AGE CALCULATION:** Age = {current_year} - Birth Year.
-3. **ELIGIBILITY LOGIC:** `is_eligible` is TRUE ONLY IF `state_valid` is true AND `age_valid` is true.
-4. **DATA OUTPUT:** Extract `link` & `provided_braces` exactly from DB.
-5. **COMBO INFO:** If "accepted_combos" -> "Accepted: [...]". If "not_accepted_combos" -> "Not Accepted: [...]". Else -> "no combo".
-
-Return JSON with this schema:
-{{
-    "summary": "str",
-    "results": [
-        {{
-            "campaign": "str",
-            "link": "str",
-            "provided_braces": "str",
-            "is_eligible": bool,
-            "breakdown": {{
-                "state": {{ "text": "str", "valid": bool }},
-                "age": {{ "text": "str", "valid": bool }}
-            }},
-            "combo_info_text": "str",
-            "reason_summary": "str"
-        }}
-    ]
-}}
-"""
+def format_combo_rule(campaign):
+    """Returns the formatted combo text and CSS class"""
+    ctype = campaign["combo_type"]
+    clist = campaign.get("combo_list", [])
+    
+    if ctype == "accepted":
+        text = f"Accepted: {', '.join(clist)}"
+        css = "combo-green"
+        icon = "✅"
+    elif ctype == "not_accepted":
+        text = f"Not Accepted: {', '.join(clist)}"
+        css = "combo-orange"
+        icon = "⚠️"
+    else:
+        text = "no combo"
+        css = "combo-blue"
+        icon = "ℹ️"
+        
+    return text, css, icon
 
 # ---------------------------------------------------------
 # 4. UI RENDERER
@@ -179,78 +194,68 @@ st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_h
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    user_input = st.text_input("Search Patient", placeholder="e.g. NY 1938 wants BB")
+    user_input = st.text_input("Search Patient", placeholder="e.g. NY 1938 BB")
     check_btn = st.button("Check Eligibility Now")
 
 if check_btn and user_input:
-    with st.spinner("Processing..."):
-        try:
-            full_prompt = f"System: {system_prompt}\nUser: {user_input}"
-            response = model.generate_content(full_prompt)
+    with st.spinner("Analyzing Rules..."):
+        # 1. Parse Input
+        state, year, combo_raw = parse_input(user_input)
+        
+        if not state or not year:
+            st.error("❌ Could not detect State (e.g. NY) or Birth Year (e.g. 1950). Please check format.")
+        else:
+            # 2. Calculate Age
+            age = calculate_age(year)
             
-            # Simple JSON parsing
-            result_json = json.loads(response.text)
-
-            if result_json:
-                st.markdown(f"""<div class="summary-box">📋 {result_json.get('summary', 'Report')}</div>""", unsafe_allow_html=True)
-
-                results = result_json.get("results", [])
-                cols = st.columns(3)
+            # 3. Show Summary
+            st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age} | State {state} | Input: {combo_raw}</div>""", unsafe_allow_html=True)
+            
+            # 4. Process Campaigns
+            cols = st.columns(3)
+            
+            for idx, campaign in enumerate(CAMPAIGNS):
+                # Check Logic
+                is_eligible, reason_summary = check_campaign_eligibility(campaign, state, age)
                 
-                for idx, item in enumerate(results):
-                    if item["is_eligible"]:
-                        status_html = '<span class="badge badge-success">✅ ELIGIBLE</span>'
-                        border_style = "border-top: 5px solid #00e676;" 
-                    else:
-                        status_html = '<span class="badge badge-error">❌ NOT ELIGIBLE</span>'
-                        border_style = "border-top: 5px solid #ff5252;" 
+                # Determine Styling
+                if is_eligible:
+                    status_html = '<span class="badge badge-success">✅ ELIGIBLE</span>'
+                    border_style = "border-top: 5px solid #00e676;"
+                    state_valid = True
+                    age_valid = True
+                else:
+                    status_html = '<span class="badge badge-error">❌ NOT ELIGIBLE</span>'
+                    border_style = "border-top: 5px solid #ff5252;"
+                    # Determine specifics for the breakdown list
+                    state_valid = state in campaign["states"]
+                    age_valid = campaign["min_age"] <= age <= campaign["max_age"]
 
-                    bd = item['breakdown']
-                    provided_items = item.get('provided_braces', 'N/A')
-                    link_url = item.get('link', '#')
-                    
-                    def format_row(label, data):
-                        text = str(data.get('text', 'N/A'))
-                        is_valid = data.get('valid')
-                        if is_valid is True:
-                            val_html = f'<span class="val-success">{text} ✅</span>'
-                        elif is_valid is False:
-                            val_html = f'<span class="val-error">{text} ❌</span>'
-                        else:
-                            val_html = f'<span class="val-neutral">{text} ➖</span>'
-                        return f'<div class="check-item"><span class="check-label">{label}</span>{val_html}</div>'
+                # Helper to format rows
+                def get_row_html(label, val, is_valid):
+                    icon = "✅" if is_valid else "❌"
+                    color_class = "val-success" if is_valid else "val-error"
+                    return f'<div class="check-item"><span class="check-label">{label}</span><span class="{color_class}">{val} {icon}</span></div>'
 
-                    rows_html = ""
-                    rows_html += format_row("🗺️ State", bd.get('state', {}))
-                    rows_html += format_row("🎂 Age", bd.get('age', {}))
-                    rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{provided_items}</span></div>'
+                rows_html = ""
+                rows_html += get_row_html("🗺️ State", state, state_valid)
+                rows_html += get_row_html("🎂 Age", age, age_valid)
+                rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{campaign["provided"]}</span></div>'
 
-                    combo_text = item.get("combo_info_text", "no combo")
-                    if "not accepted" in combo_text.lower():
-                        css_class = "combo-orange"
-                        icon = "⚠️"
-                    elif "no combo" in combo_text.lower():
-                        css_class = "combo-blue"
-                        icon = "ℹ️"
-                    else:
-                        css_class = "combo-green"
-                        icon = "✅"
-                        
-                    combo_html = f'<div class="combo-box {css_class}">{icon} {combo_text}</div>'
+                # Get Combo Rule Text & Color
+                combo_text, combo_css, combo_icon = format_combo_rule(campaign)
+                combo_html = f'<div class="combo-box {combo_css}">{combo_icon} {combo_text}</div>'
 
-                    with cols[idx % 3]:
-                        html_card = f"""
-    <div class="glass-card" style="{border_style}">
-        <h3 class="card-title">{item['campaign']}</h3>
-        {status_html}
-        <div style="margin-bottom: 10px;">{rows_html}</div>
-        {combo_html}
-        <div class="reason-text">💡 {item['reason_summary']}</div>
-        <a href="{link_url}" target="_blank" class="portal-link">🔗 Open Portal</a>
-    </div>
-    """
-                        st.markdown(html_card, unsafe_allow_html=True)
-            else:
-                st.error("No response generated.")
-        except Exception as e:
-            st.error(f"System Error: {e}")
+                # Render Card
+                with cols[idx % 3]:
+                    html_card = f"""
+<div class="glass-card" style="{border_style}">
+    <h3 class="card-title">{campaign['name']}</h3>
+    {status_html}
+    <div style="margin-bottom: 10px;">{rows_html}</div>
+    {combo_html}
+    <div class="reason-text">💡 {reason_summary}</div>
+    <a href="{campaign['link']}" target="_blank" class="portal-link">🔗 Open Portal</a>
+</div>
+"""
+                    st.markdown(html_card, unsafe_allow_html=True)
