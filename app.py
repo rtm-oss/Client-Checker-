@@ -43,7 +43,6 @@ st.markdown("""
 # ---------------------------------------------------------
 # 2. RULE-BASED DATABASE
 # ---------------------------------------------------------
-# Full State List for matching
 ALL_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"]
 
 PC_STATES = ["DE", "ME", "MD", "MA", "NJ", "NY", "PA", "VT", "IL", "MI", "OH", "WI", "FL", "MS", "NC", "VA", "WV", "AZ", "KS", "SD", "WA", "WY"]
@@ -51,9 +50,11 @@ DL_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "ID", "IL", "
 MEDX_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MS", "MT", "NE", "NH", "NJ", "NM", "NC", "OH", "NY", "RI", "SC", "ID", "TN", "TX", "VA", "VT", "SD", "UT", "WI", "WY", "WV", "WA", "OR", "MO"]
 WE_STATES = ["VT", "NH", "ME", "MA", "RI", "DE", "NY", "ID", "UT", "MT", "WY", "SD", "NE", "KS", "IA", "CA", "MO", "AZ", "WA", "LA", "WI", "MS", "IN", "WV", "VA", "SC", "MI", "TX", "NC", "AK", "NM"]
 
+# Updated CAMPAIGNS with Status
 CAMPAIGNS = [
     {
         "name": "PC-Telemed",
+        "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-pc-telemed?authuser=0",
         "provided": "BB, BKB, BB + Single Knee",
         "combo_type": "accepted",
@@ -64,15 +65,17 @@ CAMPAIGNS = [
     },
     {
         "name": "DL-PCP",
+        "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-dl-pcp?authuser=0",
         "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
-        "combo_type": "none",
+        "combo_type": "none", 
         "states": DL_STATES,
         "min_age": 0,
-        "max_age": 200
+        "max_age": 200 
     },
     {
         "name": "MEDX-PCP",
+        "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-medx-chasing?authuser=0",
         "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
         "combo_type": "none",
@@ -82,6 +85,7 @@ CAMPAIGNS = [
     },
     {
         "name": "WE-PCP",
+        "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/2-we-pcp?authuser=0",
         "provided": "Back, Knee, Wrist, Shoulder, Elbow, Ankle, Neck",
         "combo_type": "not_accepted",
@@ -92,68 +96,56 @@ CAMPAIGNS = [
     },
     {
         "name": "CGM-PCP",
+        "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/3-cgm-pcp?authuser=0",
         "provided": "Dexcom (CGM)",
         "combo_type": "none",
         "states": ALL_STATES,
         "min_age": 0,
         "max_age": 200
-    }
+    },
+    # Inactive Examples
+    {"name": "Medicare-Fit", "status": "Inactive", "states": [], "min_age": 0, "max_age": 0, "provided": "", "combo_type": "none"},
+    {"name": "PPO-CGM", "status": "Inactive", "states": [], "min_age": 0, "max_age": 0, "provided": "", "combo_type": "none"},
+    {"name": "Fast-Telemed", "status": "Inactive", "states": [], "min_age": 0, "max_age": 0, "provided": "", "combo_type": "none"}
 ]
 
 # ---------------------------------------------------------
-# 3. HELPER FUNCTIONS (The Smart Logic 🧠)
+# 3. HELPER FUNCTIONS
 # ---------------------------------------------------------
 def parse_input(user_input):
-    """
-    Super robust parser:
-    1. Finds year (19xx or 20xx) regardless of position.
-    2. Finds state (2 letters from ALL_STATES list) regardless of case/position.
-    3. Anything else is considered 'Combo'.
-    """
-    clean_text = user_input.upper() # To uppercase
+    clean_text = user_input.upper()
     
-    # 1. FIND YEAR (Strict 4 digits starting with 19 or 20)
+    # 1. FIND YEAR
     year_match = re.search(r'(19|20)\d{2}', clean_text)
     year = int(year_match.group(0)) if year_match else None
     
-    # Remove year from text to avoid confusion (e.g. CA1990 -> CA)
     text_without_year = clean_text
     if year:
         text_without_year = text_without_year.replace(str(year), " ")
 
-    # 2. FIND STATE (Check against valid list)
+    # 2. FIND STATE
     state = None
-    # We split by non-alpha characters to check tokens, 
-    # BUT we also handle "PA1968" case where space is missing.
-    # Logic: Look for any 2-letter substring that matches a state code
     found_states = []
     for s in ALL_STATES:
-        # Check if state exists as a distinct word OR inside the string if strictly 2 chars
-        # Simplest robust way: if the state code exists in the string (after year removal)
         if s in text_without_year:
             found_states.append(s)
             
-    # Heuristic: Pick the first valid state found (or longest match if needed, but states are all 2 chars)
     if found_states:
-        # Preference logic: if multiple found (rare like "AL" inside "WALKER"), usually 
-        # the user input is short. Let's pick the one that matches strict word boundary if possible
         best_state = None
         for s in found_states:
             if re.search(r'\b' + s + r'\b', text_without_year):
                 best_state = s
                 break
-        state = best_state if best_state else found_states[0] # Fallback to first found
+        state = best_state if best_state else found_states[0]
 
     # 3. EXTRACT COMBO
-    # Remove State and Year from Original text
     combo_text = clean_text
     if state: combo_text = combo_text.replace(state, "")
     if year: combo_text = combo_text.replace(str(year), "")
     
-    # Cleanup extra symbols
-    combo_text = re.sub(r'[^A-Z0-9\+]', ' ', combo_text) # Keep letters, numbers, +
-    combo_text = re.sub(r'\s+', ' ', combo_text).strip() # Merge spaces
+    combo_text = re.sub(r'[^A-Z0-9\+]', ' ', combo_text)
+    combo_text = re.sub(r'\s+', ' ', combo_text).strip()
     
     if not combo_text: combo_text = "None"
     
@@ -209,7 +201,7 @@ st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_h
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    user_input = st.text_input("Search Patient", placeholder="e.g.NY 1950 ")
+    user_input = st.text_input("Search Patient", placeholder="e.g. PA1968 or NY 1950 BB")
     check_btn = st.button("Check Eligibility Now")
 
 if check_btn and user_input:
@@ -220,10 +212,15 @@ if check_btn and user_input:
             st.error("❌ Could not detect State (e.g. NY) or Birth Year (e.g. 1950). Please check format.")
         else:
             age = calculate_age(year)
-            st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age} | State {state} </div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age} | State {state} | Input: {combo_raw}</div>""", unsafe_allow_html=True)
+            
+            # 1. Filter ACTIVE Campaigns Only
+            active_campaigns = [c for c in CAMPAIGNS if c.get("status") == "Active"]
             
             cols = st.columns(3)
-            for idx, campaign in enumerate(CAMPAIGNS):
+            # 2. Iterate ONLY over active campaigns
+            for idx, campaign in enumerate(active_campaigns):
+                
                 is_eligible, reason_summary = check_campaign_eligibility(campaign, state, age)
                 
                 if is_eligible:
@@ -262,5 +259,3 @@ if check_btn and user_input:
 </div>
 """
                     st.markdown(html_card, unsafe_allow_html=True)
-
-
