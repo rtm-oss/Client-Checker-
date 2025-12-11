@@ -254,7 +254,7 @@ st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_h
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    user_input = st.text_input("Search Patient", placeholder="e.g. 11-1938 NY BB (or just 1938)")
+    user_input = st.text_input("Search Patient", placeholder="e.g. 11-1938 NY (or just 1938)")
     check_btn = st.button("Check Eligibility Now")
 
 if check_btn and user_input:
@@ -324,3 +324,4 @@ if check_btn and user_input:
 </div>
 """
                     st.markdown(html_card, unsafe_allow_html=True)
+
