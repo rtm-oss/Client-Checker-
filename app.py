@@ -75,7 +75,7 @@ CAMPAIGNS = [
     },
     {
         "name": "MEDX-PCP",
-        "status": "Active",
+        "status": "Inactive",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-medx-chasing?authuser=0",
         "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
         "combo_type": "none",
@@ -259,3 +259,4 @@ if check_btn and user_input:
 </div>
 """
                     st.markdown(html_card, unsafe_allow_html=True)
+
