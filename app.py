@@ -9,18 +9,16 @@ from langchain_core.messages import SystemMessage, HumanMessage
 # ---------------------------------------------------------
 # 1. CSS & STYLING (PURE BLACK UI ⚫)
 # ---------------------------------------------------------
-st.set_page_config(page_title="Clinet Checker", layout="wide", page_icon="💎")
+st.set_page_config(page_title="Eligibility Dashboard", layout="wide", page_icon="💎")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
 
-    /* Global Settings */
     html, body, [class*="css"] {
         font-family: 'Cairo', sans-serif;
     }
     
-    /* خلفية الصفحة: أسود صريح */
     .stApp {
         background-color: #000000;
     }
@@ -36,7 +34,6 @@ st.markdown("""
         text-shadow: 0 10px 30px rgba(0, 200, 83, 0.2);
     }
 
-    /* Glass Card */
     .glass-card {
         background: rgba(22, 27, 34, 0.8);
         backdrop-filter: blur(12px);
@@ -69,10 +66,9 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* Summary Box Styling (New & Centered) */
     .summary-box {
-        text-align: center; /* سنترة النص */
-        background: rgba(33, 150, 243, 0.15); /* خلفية زرقاء شفافة */
+        text-align: center;
+        background: rgba(33, 150, 243, 0.15);
         border: 1px solid #2196f3;
         color: #ffffff;
         padding: 15px;
@@ -83,7 +79,6 @@ st.markdown("""
         box-shadow: 0 0 20px rgba(33, 150, 243, 0.2);
     }
 
-    /* Badges */
     .badge {
         display: block;
         margin: 0 auto 20px auto;
@@ -107,7 +102,6 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(255, 82, 82, 0.4);
     }
 
-    /* Check Items */
     .check-item {
         display: flex;
         justify-content: space-between;
@@ -117,26 +111,12 @@ st.markdown("""
         font-size: 0.95rem;
         color: #eceff1;
     }
-    .check-label {
-        font-weight: 600;
-        color: #90a4ae;
-    }
-
+    .check-label { font-weight: 600; color: #90a4ae; }
     .val-success { color: #69f0ae; font-weight: bold; text-shadow: 0 0 8px rgba(105, 240, 174, 0.3); }
     .val-error { color: #ff8a80; font-weight: bold; text-shadow: 0 0 8px rgba(255, 138, 128, 0.3); }
     .val-neutral { color: #b0bec5; }
-    
-    .val-list { 
-        color: #fff59d; 
-        font-size: 0.9rem; 
-        font-weight: 600;
-        text-align: right; 
-        flex: 1;
-        margin-left: 10px;
-        line-height: 1.3;
-    }
+    .val-list { color: #fff59d; font-size: 0.9rem; font-weight: 600; text-align: right; flex: 1; margin-left: 10px; line-height: 1.3; }
 
-    /* Combo Boxes */
     .combo-box {
         margin-top: 15px;
         padding: 12px;
@@ -148,22 +128,9 @@ st.markdown("""
         gap: 10px;
     }
     
-    .combo-green {
-        background: rgba(27, 94, 32, 0.4);
-        border: 1px solid #00e676;
-        color: #b9f6ca;
-    }
-    .combo-orange {
-        background: #FFC50F;
-        border: 1px solid #FFD740;
-        color: #000000;
-        box-shadow: 0 0 10px rgba(255, 197, 15, 0.2);
-    }
-    .combo-blue {
-        background: rgba(2, 119, 189, 0.4);
-        border: 1px solid #29b6f6;
-        color: #e1f5fe;
-    }
+    .combo-green { background: rgba(27, 94, 32, 0.4); border: 1px solid #00e676; color: #b9f6ca; }
+    .combo-orange { background: #FFC50F; border: 1px solid #FFD740; color: #000000; box-shadow: 0 0 10px rgba(255, 197, 15, 0.2); }
+    .combo-blue { background: rgba(2, 119, 189, 0.4); border: 1px solid #29b6f6; color: #e1f5fe; }
 
     .reason-text {
         margin-top: 15px;
@@ -189,10 +156,7 @@ st.markdown("""
         transition: 0.3s;
         box-shadow: 0 4px 15px rgba(33, 203, 243, 0.3);
     }
-    .portal-link:hover {
-        transform: scale(1.02);
-        box-shadow: 0 6px 20px rgba(33, 203, 243, 0.5);
-    }
+    .portal-link:hover { transform: scale(1.02); box-shadow: 0 6px 20px rgba(33, 203, 243, 0.5); }
 
     .stButton>button {
         width: 100%;
@@ -206,11 +170,7 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3);
         transition: 0.3s;
     }
-    .stButton>button:hover {
-        transform: scale(1.01);
-        box-shadow: 0 6px 25px rgba(0, 230, 118, 0.5);
-        color: #000;
-    }
+    .stButton>button:hover { transform: scale(1.01); box-shadow: 0 6px 25px rgba(0, 230, 118, 0.5); color: #000; }
     
     .stTextInput>div>div>input {
         background-color: #161b22;
@@ -220,15 +180,12 @@ st.markdown("""
         padding: 10px;
         font-size: 1.1rem;
     }
-    .stTextInput>div>div>input:focus {
-        border-color: #00e676;
-        box-shadow: 0 0 10px rgba(0, 230, 118, 0.2);
-    }
+    .stTextInput>div>div>input:focus { border-color: #00e676; box-shadow: 0 0 10px rgba(0, 230, 118, 0.2); }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. FULL DATABASE (Master Data)
+# 2. FULL DATABASE
 # ---------------------------------------------------------
 campaigns_data = [
     {
@@ -303,7 +260,7 @@ def clean_and_parse_json(text):
         return None
 
 # ---------------------------------------------------------
-# 4. API & HYBRID LOGIC (The Safety Net 🛡️)
+# 4. API & HYBRID LOGIC
 # ---------------------------------------------------------
 groq_key = st.secrets.get("GROQ_API_KEY")
 google_key = st.secrets.get("GOOGLE_API_KEY")
@@ -363,7 +320,6 @@ def get_hybrid_response(messages):
             llm = ChatGroq(temperature=0, groq_api_key=groq_key, model_name="llama-3.3-70b-versatile")
             return llm.invoke(messages), "Groq"
         except Exception as e:
-            print(f"Groq failed: {e}")
             pass 
     
     # 2. Try Google Gemini (Backup)
@@ -383,7 +339,7 @@ st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_h
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    user_input = st.text_input("Search Patient", placeholder="e.g. NY 1938 ")
+    user_input = st.text_input("Search Patient", placeholder="e.g. NY 1938 wants BB")
     check_btn = st.button("Check Eligibility Now")
 
 if check_btn and user_input:
@@ -397,12 +353,7 @@ if check_btn and user_input:
                 result_json = clean_and_parse_json(response.content)
 
                 if result_json:
-                    # Summary Box (Centered using Custom CSS)
-                    st.markdown(f"""
-                        <div class="summary-box">
-                            📋 {result_json.get('summary', 'Report')}
-                        </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f"""<div class="summary-box">📋 {result_json.get('summary', 'Report')}</div>""", unsafe_allow_html=True)
 
                     results = result_json.get("results", [])
                     cols = st.columns(3)
@@ -437,7 +388,7 @@ if check_btn and user_input:
                         rows_html += format_row("🎂 Age", bd.get('age', {}))
                         rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{provided_items}</span></div>'
 
-                        # 3. Combo Rules (3 Colors Logic) 🎨
+                        # 3. Combo Rules (3 Colors)
                         combo_text = item.get("combo_info_text", "no combo")
                         
                         if "not accepted" in combo_text.lower():
@@ -466,8 +417,8 @@ if check_btn and user_input:
     """
                             st.markdown(html_card, unsafe_allow_html=True)
                 else:
-                    st.error("⚠️ AI Response Error. Please Try Again.")
+                    st.warning("⚠️ Please provide a valid API Key to continue.")
             else:
-                st.error(f"Failed to get response.")
+                st.warning("⚠️ Please provide a valid API Key to continue.")
         except Exception as e:
             st.error(f"Error: {e}")
