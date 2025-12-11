@@ -26,6 +26,10 @@ st.markdown("""
     .val-error { color: #ff8a80; font-weight: bold; text-shadow: 0 0 8px rgba(255, 138, 128, 0.3); }
     .val-neutral { color: #b0bec5; }
     .val-list { color: #fff59d; font-size: 0.9rem; font-weight: 600; text-align: right; flex: 1; margin-left: 10px; line-height: 1.3; }
+    
+    /* New Style for Age Note */
+    .age-note { font-size: 0.75rem; color: #ffab91; text-align: right; margin-top: -5px; font-style: italic;}
+
     .combo-box { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
     .combo-green { background: rgba(27, 94, 32, 0.4); border: 1px solid #00e676; color: #b9f6ca; }
     .combo-orange { background: #FFC50F; border: 1px solid #FFD740; color: #000000; box-shadow: 0 0 10px rgba(255, 197, 15, 0.2); }
@@ -50,7 +54,6 @@ DL_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "ID", "IL", "
 MEDX_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MS", "MT", "NE", "NH", "NJ", "NM", "NC", "OH", "NY", "RI", "SC", "ID", "TN", "TX", "VA", "VT", "SD", "UT", "WI", "WY", "WV", "WA", "OR", "MO"]
 WE_STATES = ["VT", "NH", "ME", "MA", "RI", "DE", "NY", "ID", "UT", "MT", "WY", "SD", "NE", "KS", "IA", "CA", "MO", "AZ", "WA", "LA", "WI", "MS", "IN", "WV", "VA", "SC", "MI", "TX", "NC", "AK", "NM"]
 
-# Updated CAMPAIGNS with Status
 CAMPAIGNS = [
     {
         "name": "PC-Telemed",
@@ -61,7 +64,8 @@ CAMPAIGNS = [
         "combo_list": ["BB", "Both Knees", "BB + Single Knee"],
         "states": PC_STATES,
         "min_age": 65,
-        "max_age": 84
+        "max_age": 84,
+        "age_note": "Limit: 65-84 years old" # Note added
     },
     {
         "name": "DL-PCP",
@@ -92,7 +96,8 @@ CAMPAIGNS = [
         "combo_list": ["WRISTS + ANKLES", "ELBOWS + ANKLES", "WRISTS + ELBOWS", "WRISTS + SHOULDERS", "ELBOWS + SHOULDERS", "NECK + SHOULDER"],
         "states": WE_STATES,
         "min_age": 0,
-        "max_age": 90
+        "max_age": 89, # 🔥 Changed to 89 to enforce (89 and 11 months max)
+        "age_note": "Limit: 89 years & 11 months" # 🔥 The requested Note
     },
     {
         "name": "CGM-PCP",
@@ -104,7 +109,7 @@ CAMPAIGNS = [
         "min_age": 0,
         "max_age": 200
     },
-    # Inactive Examples
+    # Inactive
     {"name": "Medicare-Fit", "status": "Inactive", "states": [], "min_age": 0, "max_age": 0, "provided": "", "combo_type": "none"},
     {"name": "PPO-CGM", "status": "Inactive", "states": [], "min_age": 0, "max_age": 0, "provided": "", "combo_type": "none"},
     {"name": "Fast-Telemed", "status": "Inactive", "states": [], "min_age": 0, "max_age": 0, "provided": "", "combo_type": "none"}
@@ -163,9 +168,13 @@ def check_campaign_eligibility(campaign, state, age):
         is_eligible = False
         reasons.append(f"State {state} is NOT in approved list.")
     
+    # Age Check Logic
     if age < campaign["min_age"] or age > campaign["max_age"]:
         is_eligible = False
-        if campaign["max_age"] < 150:
+        # Custom message if it's WE-PCP to match user request
+        if campaign["name"] == "WE-PCP" and age > campaign["max_age"]:
+             reasons.append(f"Age {age} exceeds limit (Max 89y 11m).")
+        elif campaign["max_age"] < 150:
             reasons.append(f"Age {age} is out of range ({campaign['min_age']}-{campaign['max_age']}).")
         else:
             reasons.append(f"Age {age} is invalid.")
@@ -201,9 +210,6 @@ st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_h
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    # ---------------------------
-    # TWEAK: Updated Placeholder
-    # ---------------------------
     user_input = st.text_input("Search Patient", placeholder="e.g. NY 1950")
     check_btn = st.button("Check Eligibility Now")
 
@@ -216,17 +222,12 @@ if check_btn and user_input:
         else:
             age = calculate_age(year)
             
-            # ---------------------------
-            # TWEAK: Smart Summary Text (Hides "None")
-            # ---------------------------
             combo_display = f" | Combo: {combo_raw}" if combo_raw and combo_raw != "None" else ""
             st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age} | State {state}{combo_display}</div>""", unsafe_allow_html=True)
             
-            # 1. Filter ACTIVE Campaigns Only
             active_campaigns = [c for c in CAMPAIGNS if c.get("status") == "Active"]
             
             cols = st.columns(3)
-            # 2. Iterate ONLY over active campaigns
             for idx, campaign in enumerate(active_campaigns):
                 
                 is_eligible, reason_summary = check_campaign_eligibility(campaign, state, age)
@@ -250,6 +251,11 @@ if check_btn and user_input:
                 rows_html = ""
                 rows_html += get_row_html("🗺️ State", state, state_valid)
                 rows_html += get_row_html("🎂 Age", age, age_valid)
+                
+                # 🔥 Age Note Injection
+                if "age_note" in campaign:
+                    rows_html += f'<div class="age-note">⚠️ {campaign["age_note"]}</div>'
+
                 rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{campaign["provided"]}</span></div>'
 
                 combo_text, combo_css, combo_icon = format_combo_rule(campaign)
