@@ -41,22 +41,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. RULE-BASED DATABASE (Logic Engine)
+# 2. RULE-BASED DATABASE
 # ---------------------------------------------------------
-# Define States Lists
+# Full State List for matching
 ALL_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"]
 
-# Specific Lists
 PC_STATES = ["DE", "ME", "MD", "MA", "NJ", "NY", "PA", "VT", "IL", "MI", "OH", "WI", "FL", "MS", "NC", "VA", "WV", "AZ", "KS", "SD", "WA", "WY"]
 DL_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "NE", "NH", "NJ", "NM", "NY", "OH", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "VI", "WA", "WI", "WV", "WY"]
 MEDX_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MS", "MT", "NE", "NH", "NJ", "NM", "NC", "OH", "NY", "RI", "SC", "ID", "TN", "TX", "VA", "VT", "SD", "UT", "WI", "WY", "WV", "WA", "OR", "MO"]
 WE_STATES = ["VT", "NH", "ME", "MA", "RI", "DE", "NY", "ID", "UT", "MT", "WY", "SD", "NE", "KS", "IA", "CA", "MO", "AZ", "WA", "LA", "WI", "MS", "IN", "WV", "VA", "SC", "MI", "TX", "NC", "AK", "NM"]
 
-# Campaigns DB
 CAMPAIGNS = [
     {
         "name": "PC-Telemed",
-        "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-pc-telemed?authuser=0",
         "provided": "BB, BKB, BB + Single Knee",
         "combo_type": "accepted",
@@ -67,17 +64,15 @@ CAMPAIGNS = [
     },
     {
         "name": "DL-PCP",
-        "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-dl-pcp?authuser=0",
         "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
-        "combo_type": "none", # No specific rules
+        "combo_type": "none",
         "states": DL_STATES,
         "min_age": 0,
-        "max_age": 200 # No limit
+        "max_age": 200
     },
     {
         "name": "MEDX-PCP",
-        "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-medx-chasing?authuser=0",
         "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
         "combo_type": "none",
@@ -87,7 +82,6 @@ CAMPAIGNS = [
     },
     {
         "name": "WE-PCP",
-        "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/2-we-pcp?authuser=0",
         "provided": "Back, Knee, Wrist, Shoulder, Elbow, Ankle, Neck",
         "combo_type": "not_accepted",
@@ -98,7 +92,6 @@ CAMPAIGNS = [
     },
     {
         "name": "CGM-PCP",
-        "status": "Active",
         "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/3-cgm-pcp?authuser=0",
         "provided": "Dexcom (CGM)",
         "combo_type": "none",
@@ -109,29 +102,59 @@ CAMPAIGNS = [
 ]
 
 # ---------------------------------------------------------
-# 3. HELPER FUNCTIONS (The Brain 🧠)
+# 3. HELPER FUNCTIONS (The Smart Logic 🧠)
 # ---------------------------------------------------------
 def parse_input(user_input):
     """
-    Extracts State, Birth Year, and Combo text from user input using Regex.
-    Example: "NY 1938 wants BB" -> State: NY, Year: 1938, Combo: wants BB
+    Super robust parser:
+    1. Finds year (19xx or 20xx) regardless of position.
+    2. Finds state (2 letters from ALL_STATES list) regardless of case/position.
+    3. Anything else is considered 'Combo'.
     """
-    user_input = user_input.upper()
+    clean_text = user_input.upper() # To uppercase
     
-    # 1. Find State (2 letters)
-    state_match = re.search(r'\b[A-Z]{2}\b', user_input)
-    state = state_match.group(0) if state_match else None
-    
-    # 2. Find Year (4 digits, starting with 19 or 20)
-    year_match = re.search(r'\b(19|20)\d{2}\b', user_input)
+    # 1. FIND YEAR (Strict 4 digits starting with 19 or 20)
+    year_match = re.search(r'(19|20)\d{2}', clean_text)
     year = int(year_match.group(0)) if year_match else None
     
-    # 3. Everything else is "Combo" (cleaned)
-    combo_text = user_input
+    # Remove year from text to avoid confusion (e.g. CA1990 -> CA)
+    text_without_year = clean_text
+    if year:
+        text_without_year = text_without_year.replace(str(year), " ")
+
+    # 2. FIND STATE (Check against valid list)
+    state = None
+    # We split by non-alpha characters to check tokens, 
+    # BUT we also handle "PA1968" case where space is missing.
+    # Logic: Look for any 2-letter substring that matches a state code
+    found_states = []
+    for s in ALL_STATES:
+        # Check if state exists as a distinct word OR inside the string if strictly 2 chars
+        # Simplest robust way: if the state code exists in the string (after year removal)
+        if s in text_without_year:
+            found_states.append(s)
+            
+    # Heuristic: Pick the first valid state found (or longest match if needed, but states are all 2 chars)
+    if found_states:
+        # Preference logic: if multiple found (rare like "AL" inside "WALKER"), usually 
+        # the user input is short. Let's pick the one that matches strict word boundary if possible
+        best_state = None
+        for s in found_states:
+            if re.search(r'\b' + s + r'\b', text_without_year):
+                best_state = s
+                break
+        state = best_state if best_state else found_states[0] # Fallback to first found
+
+    # 3. EXTRACT COMBO
+    # Remove State and Year from Original text
+    combo_text = clean_text
     if state: combo_text = combo_text.replace(state, "")
-    if year: combo_text = str(combo_text).replace(str(year), "")
+    if year: combo_text = combo_text.replace(str(year), "")
     
-    combo_text = re.sub(r'\s+', ' ', combo_text).strip() # Remove extra spaces
+    # Cleanup extra symbols
+    combo_text = re.sub(r'[^A-Z0-9\+]', ' ', combo_text) # Keep letters, numbers, +
+    combo_text = re.sub(r'\s+', ' ', combo_text).strip() # Merge spaces
+    
     if not combo_text: combo_text = "None"
     
     return state, year, combo_text
@@ -141,19 +164,13 @@ def calculate_age(birth_year):
     return current_year - birth_year
 
 def check_campaign_eligibility(campaign, state, age):
-    """
-    Checks if patient is eligible based on Hard Logic.
-    Returns: is_eligible (bool), reason_text (str)
-    """
     reasons = []
     is_eligible = True
     
-    # 1. Check State
     if state not in campaign["states"]:
         is_eligible = False
         reasons.append(f"State {state} is NOT in approved list.")
     
-    # 2. Check Age
     if age < campaign["min_age"] or age > campaign["max_age"]:
         is_eligible = False
         if campaign["max_age"] < 150:
@@ -161,14 +178,12 @@ def check_campaign_eligibility(campaign, state, age):
         else:
             reasons.append(f"Age {age} is invalid.")
             
-    # Success message
     if is_eligible:
         return True, "Patient meets all demographics criteria (State & Age)."
     else:
         return False, " & ".join(reasons)
 
 def format_combo_rule(campaign):
-    """Returns the formatted combo text and CSS class"""
     ctype = campaign["combo_type"]
     clist = campaign.get("combo_list", [])
     
@@ -194,31 +209,23 @@ st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_h
 
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    user_input = st.text_input("Search Patient", placeholder="e.g. NY 1938 BB")
+    user_input = st.text_input("Search Patient", placeholder="e.g. PA1968 or NY 1950 BB")
     check_btn = st.button("Check Eligibility Now")
 
 if check_btn and user_input:
     with st.spinner("Analyzing Rules..."):
-        # 1. Parse Input
         state, year, combo_raw = parse_input(user_input)
         
         if not state or not year:
             st.error("❌ Could not detect State (e.g. NY) or Birth Year (e.g. 1950). Please check format.")
         else:
-            # 2. Calculate Age
             age = calculate_age(year)
-            
-            # 3. Show Summary
             st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age} | State {state} | Input: {combo_raw}</div>""", unsafe_allow_html=True)
             
-            # 4. Process Campaigns
             cols = st.columns(3)
-            
             for idx, campaign in enumerate(CAMPAIGNS):
-                # Check Logic
                 is_eligible, reason_summary = check_campaign_eligibility(campaign, state, age)
                 
-                # Determine Styling
                 if is_eligible:
                     status_html = '<span class="badge badge-success">✅ ELIGIBLE</span>'
                     border_style = "border-top: 5px solid #00e676;"
@@ -227,11 +234,9 @@ if check_btn and user_input:
                 else:
                     status_html = '<span class="badge badge-error">❌ NOT ELIGIBLE</span>'
                     border_style = "border-top: 5px solid #ff5252;"
-                    # Determine specifics for the breakdown list
                     state_valid = state in campaign["states"]
                     age_valid = campaign["min_age"] <= age <= campaign["max_age"]
 
-                # Helper to format rows
                 def get_row_html(label, val, is_valid):
                     icon = "✅" if is_valid else "❌"
                     color_class = "val-success" if is_valid else "val-error"
@@ -242,11 +247,9 @@ if check_btn and user_input:
                 rows_html += get_row_html("🎂 Age", age, age_valid)
                 rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{campaign["provided"]}</span></div>'
 
-                # Get Combo Rule Text & Color
                 combo_text, combo_css, combo_icon = format_combo_rule(campaign)
                 combo_html = f'<div class="combo-box {combo_css}">{combo_icon} {combo_text}</div>'
 
-                # Render Card
                 with cols[idx % 3]:
                     html_card = f"""
 <div class="glass-card" style="{border_style}">
