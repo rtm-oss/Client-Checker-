@@ -48,7 +48,8 @@ st.markdown("""
 # ---------------------------------------------------------
 # 2. DATA ENGINE (Google Sheets) 🌐
 # ---------------------------------------------------------
-SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQythtQBUCbRZAw54i_5x1uSz0NI9aA5O6GpYaKU6h_twzBGsJeu7PiJTjmUd4_xVGon4lHhSoQ7KZ7/pubhtml" 
+# ✅ اللينك الصحيح (CSV)
+SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQythtQBUCbRZAw54i_5x1uSz0NI9aA5O6GpYaKU6h_twzBGsJeu7PiJTjmUd4_xVGon4lHhSoQ7KZ7/pub?output=csv"
 
 # Full State List
 ALL_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"]
@@ -56,39 +57,36 @@ ALL_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","
 @st.cache_data(ttl=60)
 def load_campaigns():
     try:
-        # 1. Check Link
-        if "PASTE_YOUR" in SHEET_URL or "حط_لينك" in SHEET_URL:
-            st.error("🚨 Error: Please paste your Google Sheet CSV link in app.py")
-            return []
-
-        # 2. Load Data (Robust Mode)
+        # Load Data
         df = pd.read_csv(SHEET_URL, dtype=str, engine='python', on_bad_lines='skip')
         df = df.fillna("") 
         
-        # تنظيف أسماء الأعمدة (شيل المسافات الزيادة في العناوين)
+        # Clean Columns
         df.columns = [c.strip() for c in df.columns]
-
-        # 🔍 DEBUG: (امسح السطر ده بعد ما تتأكد إن الداتا ظهرت)
-        # st.write("Raw Data Preview:", df.head()) 
 
         campaigns = []
         for _, row in df.iterrows():
-            # تنظيف الداتا من المسافات
+            # Clean Strings Helper
             def clean_str(val): return str(val).strip()
             
-            # Status Normalization (عشان يقبل Active, active, ACTIVE)
-            status_raw = clean_str(row.get('status', 'Inactive')).title() # بيحولها دايماً لـ Active
+            # Status Normalization
+            status_raw = clean_str(row.get('status', 'Inactive')).title()
             
-            states_list = [s.strip().upper() for s in str(row.get('states', '')).split(',')] if row.get('states') else []
-            combos_list = [c.strip() for c in str(row.get('combo_list', '')).split(',')] if row.get('combo_list') else []
+            # Parse Lists
+            states_str = str(row.get('states', '')).replace('"', '').strip()
+            states_list = [s.strip().upper() for s in states_str.split(',')] if states_str else []
             
+            combos_str = str(row.get('combo_list', '')).replace('"', '').strip()
+            combos_list = [c.strip() for c in combos_str.split(',')] if combos_str else []
+            
+            # Safe Int Conversion
             def safe_int(val):
                 try: return int(float(val))
                 except: return 0
 
             campaign = {
                 "name": clean_str(row.get('name', 'Unknown')),
-                "status": status_raw, 
+                "status": status_raw,
                 "link": clean_str(row.get('link', '#')),
                 "resource_link": clean_str(row.get('resource_link', '')) if row.get('resource_link') else None,
                 "resource_label": clean_str(row.get('resource_label', 'Check Link')) if row.get('resource_label') else None,
@@ -105,9 +103,9 @@ def load_campaigns():
             
         return campaigns
     except Exception as e:
-        st.error(f"❌ Error loading data details: {e}")
+        st.error(f"❌ Error loading data from sheet: {e}")
         return []
-        
+
 CAMPAIGNS = load_campaigns()
 
 # ---------------------------------------------------------
@@ -169,6 +167,7 @@ def check_campaign_eligibility(campaign, state, age_y, age_m):
         is_eligible = False
         reasons.append(f"State {state} is NOT in approved list.")
     
+    # Age Logic
     if campaign["name"] == "WE-PCP":
         limit_months = (89 * 12) + 11
         if (age_y * 12) + age_m > limit_months:
@@ -216,10 +215,11 @@ if check_btn and user_input:
             combo_display = f" | Combo: {combo_raw}" if combo_raw and combo_raw != "None" else ""
             st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age_y}y {age_m}m | State {state}{combo_display}</div>""", unsafe_allow_html=True)
             
-            active_campaigns = [c for c in CAMPAIGNS if c.get("status") == "Active"]
+            # Filter Active Campaigns (Case Insensitive)
+            active_campaigns = [c for c in CAMPAIGNS if c.get("status").lower() == "active"]
             
             if not active_campaigns:
-                st.warning("⚠️ No active campaigns found or data not loaded.")
+                st.warning("⚠️ No active campaigns found. Please check your Google Sheet.")
             else:
                 cols = st.columns(3)
                 for idx, campaign in enumerate(active_campaigns):
@@ -270,5 +270,3 @@ if check_btn and user_input:
     </div>
     """
                         st.markdown(html_card, unsafe_allow_html=True)
-
-
