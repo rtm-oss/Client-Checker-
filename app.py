@@ -53,57 +53,61 @@ SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQythtQBUCbRZAw54i_
 # Full State List
 ALL_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"]
 
-@st.cache_data(ttl=60) # تحديث كل دقيقة
+@st.cache_data(ttl=60)
 def load_campaigns():
     try:
-        # Safety check
+        # 1. Check Link
         if "PASTE_YOUR" in SHEET_URL or "حط_لينك" in SHEET_URL:
             st.error("🚨 Error: Please paste your Google Sheet CSV link in app.py")
             return []
 
-        # 🔥 التعديل السحري هنا 🔥
-        # engine='python': بيحل مشاكل الفواصل
-        # on_bad_lines='skip': لو فيه سطر بايظ خالص يتجاهله وميوقعش الموقع
+        # 2. Load Data (Robust Mode)
         df = pd.read_csv(SHEET_URL, dtype=str, engine='python', on_bad_lines='skip')
-        
         df = df.fillna("") 
         
+        # تنظيف أسماء الأعمدة (شيل المسافات الزيادة في العناوين)
+        df.columns = [c.strip() for c in df.columns]
+
+        # 🔍 DEBUG: (امسح السطر ده بعد ما تتأكد إن الداتا ظهرت)
+        # st.write("Raw Data Preview:", df.head()) 
+
         campaigns = []
         for _, row in df.iterrows():
-            # تنظيف الداتا
-            states_str = str(row.get('states', '')).replace('"', '').strip()
-            states_list = [s.strip().upper() for s in states_str.split(',')] if states_str else []
+            # تنظيف الداتا من المسافات
+            def clean_str(val): return str(val).strip()
             
-            combos_str = str(row.get('combo_list', '')).replace('"', '').strip()
-            combos_list = [c.strip() for c in combos_str.split(',')] if combos_str else []
+            # Status Normalization (عشان يقبل Active, active, ACTIVE)
+            status_raw = clean_str(row.get('status', 'Inactive')).title() # بيحولها دايماً لـ Active
             
-            # تحويل الأرقام بأمان
+            states_list = [s.strip().upper() for s in str(row.get('states', '')).split(',')] if row.get('states') else []
+            combos_list = [c.strip() for c in str(row.get('combo_list', '')).split(',')] if row.get('combo_list') else []
+            
             def safe_int(val):
-                try:
-                    return int(float(val)) # float handling helps with "65.0" strings
-                except:
-                    return 0
+                try: return int(float(val))
+                except: return 0
 
             campaign = {
-                "name": str(row.get('name', 'Unknown')),
-                "status": str(row.get('status', 'Inactive')),
-                "link": str(row.get('link', '#')),
-                "resource_link": str(row.get('resource_link', '')) if row.get('resource_link') else None,
-                "resource_label": str(row.get('resource_label', 'Check Link')) if row.get('resource_label') else None,
-                "provided": str(row.get('provided', '')),
-                "special_note": str(row.get('special_note', '')) if row.get('special_note') else None,
-                "combo_type": str(row.get('combo_type', 'none')),
+                "name": clean_str(row.get('name', 'Unknown')),
+                "status": status_raw, 
+                "link": clean_str(row.get('link', '#')),
+                "resource_link": clean_str(row.get('resource_link', '')) if row.get('resource_link') else None,
+                "resource_label": clean_str(row.get('resource_label', 'Check Link')) if row.get('resource_label') else None,
+                "provided": clean_str(row.get('provided', '')),
+                "special_note": clean_str(row.get('special_note', '')) if row.get('special_note') else None,
+                "combo_type": clean_str(row.get('combo_type', 'none')),
                 "combo_list": combos_list,
                 "states": states_list,
                 "min_age": safe_int(row.get('min_age', 0)),
                 "max_age": safe_int(row.get('max_age', 200)),
-                "age_note": str(row.get('age_note', '')) if row.get('age_note') else None
+                "age_note": clean_str(row.get('age_note', '')) if row.get('age_note') else None
             }
             campaigns.append(campaign)
+            
         return campaigns
     except Exception as e:
-        st.error(f"❌ Error loading data from sheet: {e}")
+        st.error(f"❌ Error loading data details: {e}")
         return []
+        
 CAMPAIGNS = load_campaigns()
 
 # ---------------------------------------------------------
@@ -266,4 +270,5 @@ if check_btn and user_input:
     </div>
     """
                         st.markdown(html_card, unsafe_allow_html=True)
+
 
