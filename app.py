@@ -53,43 +53,57 @@ SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQythtQBUCbRZAw54i_
 # Full State List
 ALL_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"]
 
-@st.cache_data(ttl=60) # Auto-refresh data every 60 seconds
+@st.cache_data(ttl=60) # تحديث كل دقيقة
 def load_campaigns():
     try:
-        # Safety check if user forgot to paste link
-        if "PASTE_YOUR" in SHEET_URL:
-            st.error("🚨 Error: You forgot to paste the Google Sheet CSV link in app.py!")
+        # Safety check
+        if "PASTE_YOUR" in SHEET_URL or "حط_لينك" in SHEET_URL:
+            st.error("🚨 Error: Please paste your Google Sheet CSV link in app.py")
             return []
 
-        df = pd.read_csv(SHEET_URL)
+        # 🔥 التعديل السحري هنا 🔥
+        # engine='python': بيحل مشاكل الفواصل
+        # on_bad_lines='skip': لو فيه سطر بايظ خالص يتجاهله وميوقعش الموقع
+        df = pd.read_csv(SHEET_URL, dtype=str, engine='python', on_bad_lines='skip')
+        
         df = df.fillna("") 
         
         campaigns = []
         for _, row in df.iterrows():
-            states_list = [s.strip().upper() for s in str(row['states']).split(',')] if row['states'] else []
-            combos_list = [c.strip() for c in str(row['combo_list']).split(',')] if row['combo_list'] else []
+            # تنظيف الداتا
+            states_str = str(row.get('states', '')).replace('"', '').strip()
+            states_list = [s.strip().upper() for s in states_str.split(',')] if states_str else []
             
+            combos_str = str(row.get('combo_list', '')).replace('"', '').strip()
+            combos_list = [c.strip() for c in combos_str.split(',')] if combos_str else []
+            
+            # تحويل الأرقام بأمان
+            def safe_int(val):
+                try:
+                    return int(float(val)) # float handling helps with "65.0" strings
+                except:
+                    return 0
+
             campaign = {
-                "name": row['name'],
-                "status": row['status'],
-                "link": row['link'],
-                "resource_link": row['resource_link'] if row['resource_link'] else None,
-                "resource_label": row['resource_label'] if row['resource_label'] else None,
-                "provided": row['provided'],
-                "special_note": row['special_note'] if row['special_note'] else None,
-                "combo_type": row['combo_type'],
+                "name": str(row.get('name', 'Unknown')),
+                "status": str(row.get('status', 'Inactive')),
+                "link": str(row.get('link', '#')),
+                "resource_link": str(row.get('resource_link', '')) if row.get('resource_link') else None,
+                "resource_label": str(row.get('resource_label', 'Check Link')) if row.get('resource_label') else None,
+                "provided": str(row.get('provided', '')),
+                "special_note": str(row.get('special_note', '')) if row.get('special_note') else None,
+                "combo_type": str(row.get('combo_type', 'none')),
                 "combo_list": combos_list,
                 "states": states_list,
-                "min_age": int(row['min_age']) if row['min_age'] != "" else 0,
-                "max_age": int(row['max_age']) if row['max_age'] != "" else 200,
-                "age_note": row['age_note'] if row['age_note'] else None
+                "min_age": safe_int(row.get('min_age', 0)),
+                "max_age": safe_int(row.get('max_age', 200)),
+                "age_note": str(row.get('age_note', '')) if row.get('age_note') else None
             }
             campaigns.append(campaign)
         return campaigns
     except Exception as e:
-        st.error(f"❌ Error loading data: {e}")
+        st.error(f"❌ Error loading data from sheet: {e}")
         return []
-
 CAMPAIGNS = load_campaigns()
 
 # ---------------------------------------------------------
@@ -252,3 +266,4 @@ if check_btn and user_input:
     </div>
     """
                         st.markdown(html_card, unsafe_allow_html=True)
+
