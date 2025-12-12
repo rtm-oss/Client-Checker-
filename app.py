@@ -1,6 +1,7 @@
 import streamlit as st
 import datetime
 import re
+import pandas as pd
 
 # ---------------------------------------------------------
 # 1. CSS & STYLING (PURE BLACK UI ⚫)
@@ -26,57 +27,17 @@ st.markdown("""
     .val-error { color: #ff8a80; font-weight: bold; text-shadow: 0 0 8px rgba(255, 138, 128, 0.3); }
     .val-neutral { color: #b0bec5; }
     .val-list { color: #fff59d; font-size: 0.9rem; font-weight: 600; text-align: right; flex: 1; margin-left: 10px; line-height: 1.3; }
-    
-    /* ملاحظات خاصة (Age & Special Notes) */
     .age-note { font-size: 0.75rem; color: #ffab91; text-align: right; margin-top: -5px; font-style: italic;}
-    .special-note { 
-        font-size: 0.85rem; 
-        color: #ff80ab; /* لون وردي/أحمر فاتح مميز */
-        text-align: center; 
-        margin-top: 10px; 
-        font-weight: bold;
-        background: rgba(255, 64, 129, 0.1);
-        padding: 5px;
-        border-radius: 5px;
-        border: 1px dashed #ff80ab;
-    }
-
+    .special-note { font-size: 0.85rem; color: #ff80ab; text-align: center; margin-top: 10px; font-weight: bold; background: rgba(255, 64, 129, 0.1); padding: 5px; border-radius: 5px; border: 1px dashed #ff80ab; }
     .combo-box { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
     .combo-green { background: rgba(27, 94, 32, 0.4); border: 1px solid #00e676; color: #b9f6ca; }
     .combo-orange { background: #FFC50F; border: 1px solid #FFD740; color: #000000; box-shadow: 0 0 10px rgba(255, 197, 15, 0.2); }
     .combo-blue { background: rgba(2, 119, 189, 0.4); border: 1px solid #29b6f6; color: #e1f5fe; }
     .reason-text { margin-top: 15px; font-size: 0.85rem; color: #b0bec5; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 8px; border-left: 3px solid #607d8b; line-height: 1.5; }
-    
-    /* أزرار اللينكات */
     .links-container { display: flex; gap: 10px; margin-top: 20px; }
-    .portal-link { 
-        flex: 1;
-        padding: 10px; 
-        background: linear-gradient(90deg, #2196f3, #21cbf3); 
-        color: white !important; 
-        text-align: center; 
-        text-decoration: none; 
-        border-radius: 50px; 
-        font-weight: bold; 
-        font-size: 0.9rem;
-        transition: 0.3s; 
-        box-shadow: 0 4px 15px rgba(33, 203, 243, 0.3); 
-    }
-    .extra-link {
-        flex: 1;
-        padding: 10px; 
-        background: linear-gradient(90deg, #7b1fa2, #ab47bc); /* لون موف مميز للينك الإضافي */
-        color: white !important; 
-        text-align: center; 
-        text-decoration: none; 
-        border-radius: 50px; 
-        font-weight: bold; 
-        font-size: 0.9rem;
-        transition: 0.3s; 
-        box-shadow: 0 4px 15px rgba(171, 71, 188, 0.3); 
-    }
+    .portal-link { flex: 1; padding: 10px; background: linear-gradient(90deg, #2196f3, #21cbf3); color: white !important; text-align: center; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 0.9rem; transition: 0.3s; box-shadow: 0 4px 15px rgba(33, 203, 243, 0.3); }
+    .extra-link { flex: 1; padding: 10px; background: linear-gradient(90deg, #7b1fa2, #ab47bc); color: white !important; text-align: center; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 0.9rem; transition: 0.3s; box-shadow: 0 4px 15px rgba(171, 71, 188, 0.3); }
     .portal-link:hover, .extra-link:hover { transform: scale(1.05); }
-
     .stButton>button { width: 100%; background: linear-gradient(90deg, #00c853, #00e676); color: #003300; font-size: 1.3rem; border-radius: 12px; padding: 14px; border: none; font-weight: 800; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3); transition: 0.3s; }
     .stButton>button:hover { transform: scale(1.01); box-shadow: 0 6px 25px rgba(0, 230, 118, 0.5); color: #000; }
     .stTextInput>div>div>input { background-color: #161b22; border: 1px solid rgba(255, 255, 255, 0.2); color: white; border-radius: 10px; padding: 10px; font-size: 1.1rem; }
@@ -85,102 +46,63 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. RULE-BASED DATABASE
+# 2. DATA ENGINE (Google Sheets) 🌐
 # ---------------------------------------------------------
+SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQythtQBUCbRZAw54i_5x1uSz0NI9aA5O6GpYaKU6h_twzBGsJeu7PiJTjmUd4_xVGon4lHhSoQ7KZ7/pubhtml" 
+
+# Full State List
 ALL_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"]
 
-PC_STATES = ["DE", "ME", "MD", "MA", "NJ", "NY", "PA", "VT", "IL", "MI", "OH", "WI", "FL", "MS", "NC", "VA", "WV", "AZ", "KS", "SD", "WA", "WY"]
-DL_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "NE", "NH", "NJ", "NM", "NY", "OH", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "VI", "WA", "WI", "WV", "WY"]
-MEDX_STATES = ["AK", "AR", "AZ", "CA", "DC", "DE", "FL", "GA", "IA", "IL", "IN", "KS", "KY", "LA", "MA", "ME", "MI", "MN", "MS", "MT", "NE", "NH", "NJ", "NM", "NC", "OH", "NY", "RI", "SC", "ID", "TN", "TX", "VA", "VT", "SD", "UT", "WI", "WY", "WV", "WA", "OR", "MO"]
-WE_STATES = ["VT", "NH", "ME", "MA", "RI", "DE", "NY", "ID", "UT", "MT", "WY", "SD", "NE", "KS", "IA", "CA", "MO", "AZ", "WA", "LA", "WI", "MS", "IN", "WV", "VA", "SC", "MI", "TX", "NC", "AK", "NM"]
+@st.cache_data(ttl=60) # Auto-refresh data every 60 seconds
+def load_campaigns():
+    try:
+        # Safety check if user forgot to paste link
+        if "PASTE_YOUR" in SHEET_URL:
+            st.error("🚨 Error: You forgot to paste the Google Sheet CSV link in app.py!")
+            return []
 
-# Updated CAMPAIGNS with New Links & Notes
-CAMPAIGNS = [
-    {
-        "name": "PC-Telemed",
-        "status": "Active",
-        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-pc-telemed?authuser=0",
-        "resource_link": "https://data.hrsa.gov/tools/medicare/telehealth", # New Link
-        "resource_label": "🛠️ Verification Link",
-        "provided": "BB, BKB, BB + Single Knee",
-        "combo_type": "accepted",
-        "combo_list": ["BB", "Both Knees", "BB + Single Knee"],
-        "states": PC_STATES,
-        "min_age": 65,
-        "max_age": 84,
-        "age_note": "Limit: 65-84 years old"
-    },
-    {
-        "name": "DL-PCP",
-        "status": "Active",
-        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-dl-pcp?authuser=0",
-        "resource_link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/qualified-taxonomies-check?authuser=0", # New Link
-        "resource_label": "🔍 Taxonomies Check",
-        "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
-        "special_note": "Note That Dr must be treating the pain", # New Note
-        "combo_type": "none", 
-        "states": DL_STATES,
-        "min_age": 0,
-        "max_age": 200 
-    },
-    {
-        "name": "MEDX-PCP",
-        "status": "Active",
-        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/1-medx-chasing?authuser=0",
-        "resource_link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/qualified-taxonomies-check?authuser=0", # New Link
-        "resource_label": "🔍 Taxonomies Check",
-        "provided": "Back, Knee, Wrist, Shoulder, Ankle, Neck, Elbow",
-        "special_note": "Note That Dr must be treating the pain", # New Note
-        "combo_type": "none",
-        "states": MEDX_STATES,
-        "min_age": 0,
-        "max_age": 200
-    },
-    {
-        "name": "WE-PCP",
-        "status": "Active",
-        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/2-we-pcp?authuser=0",
-        "resource_link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/qualified-taxonomies-check?authuser=0", # New Link
-        "resource_label": "🔍 Taxonomies Check",
-        "provided": "Back, Knee, Wrist, Shoulder, Elbow, Ankle, Neck",
-        "combo_type": "not_accepted",
-        "combo_list": ["WRISTS + ANKLES", "ELBOWS + ANKLES", "WRISTS + ELBOWS", "WRISTS + SHOULDERS", "ELBOWS + SHOULDERS", "NECK + SHOULDER"],
-        "states": WE_STATES,
-        "min_age": 0,
-        "max_age": 89, 
-        "age_note": "Limit: Max 89 years & 11 months"
-    },
-    {
-        "name": "CGM-PCP",
-        "status": "Active",
-        "link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/clients-menu/3-cgm-pcp?authuser=0",
-        "resource_link": "https://sites.google.com/outsourcingskill-teams.com/closing-portal-/qualified-taxonomies-check?authuser=0", # New Link
-        "resource_label": "🔍 Taxonomies Check",
-        "provided": "Dexcom (CGM)",
-        "combo_type": "none",
-        "states": ALL_STATES,
-        "min_age": 0,
-        "max_age": 200
-    },
-    # Inactive
-    {"name": "Medicare-Fit", "status": "Inactive", "states": [], "min_age": 0, "max_age": 0, "provided": "", "combo_type": "none"},
-    {"name": "PPO-CGM", "status": "Inactive", "states": [], "min_age": 0, "max_age": 0, "provided": "", "combo_type": "none"},
-    {"name": "Fast-Telemed", "status": "Inactive", "states": [], "min_age": 0, "max_age": 0, "provided": "", "combo_type": "none"}
-]
+        df = pd.read_csv(SHEET_URL)
+        df = df.fillna("") 
+        
+        campaigns = []
+        for _, row in df.iterrows():
+            states_list = [s.strip().upper() for s in str(row['states']).split(',')] if row['states'] else []
+            combos_list = [c.strip() for c in str(row['combo_list']).split(',')] if row['combo_list'] else []
+            
+            campaign = {
+                "name": row['name'],
+                "status": row['status'],
+                "link": row['link'],
+                "resource_link": row['resource_link'] if row['resource_link'] else None,
+                "resource_label": row['resource_label'] if row['resource_label'] else None,
+                "provided": row['provided'],
+                "special_note": row['special_note'] if row['special_note'] else None,
+                "combo_type": row['combo_type'],
+                "combo_list": combos_list,
+                "states": states_list,
+                "min_age": int(row['min_age']) if row['min_age'] != "" else 0,
+                "max_age": int(row['max_age']) if row['max_age'] != "" else 200,
+                "age_note": row['age_note'] if row['age_note'] else None
+            }
+            campaigns.append(campaign)
+        return campaigns
+    except Exception as e:
+        st.error(f"❌ Error loading data: {e}")
+        return []
+
+CAMPAIGNS = load_campaigns()
 
 # ---------------------------------------------------------
 # 3. HELPER FUNCTIONS
 # ---------------------------------------------------------
 def parse_input(user_input):
     clean_text = user_input.upper()
-    year = None
-    month = 1 
+    year, month = None, 1 
     date_match = re.search(r'\b(0?[1-9]|1[0-2])[-/](19|20)\d{2}\b', clean_text)
     if date_match:
         date_str = date_match.group(0)
         parts = date_str.split('-') if '-' in date_str else date_str.split('/')
-        month = int(parts[0])
-        year = int(parts[1])
+        month, year = int(parts[0]), int(parts[1])
         text_without_date = clean_text.replace(date_str, " ")
     else:
         year_match = re.search(r'(19|20)\d{2}', clean_text)
@@ -200,8 +122,7 @@ def parse_input(user_input):
         best_state = None
         for s in found_states:
             if re.search(r'\b' + s + r'\b', text_without_date):
-                best_state = s
-                break
+                best_state = s; break
         state = best_state if best_state else found_states[0]
 
     combo_text = clean_text
@@ -209,12 +130,8 @@ def parse_input(user_input):
     if date_match: combo_text = combo_text.replace(date_match.group(0), "")
     elif year: combo_text = combo_text.replace(str(year), "")
     
-    combo_text = re.sub(r'[^A-Z0-9\+]', ' ', combo_text)
-    combo_text = re.sub(r'\s+', ' ', combo_text).strip()
-    
-    if not combo_text: combo_text = "None"
-    
-    return state, year, month, combo_text
+    combo_text = re.sub(r'[^A-Z0-9\+]', ' ', combo_text).strip()
+    return state, year, month, (combo_text if combo_text else "None")
 
 def calculate_precise_age(birth_year, birth_month):
     today = datetime.date.today()
@@ -235,9 +152,8 @@ def check_campaign_eligibility(campaign, state, age_y, age_m):
         reasons.append(f"State {state} is NOT in approved list.")
     
     if campaign["name"] == "WE-PCP":
-        max_months_limit = (89 * 12) + 11
-        patient_months = (age_y * 12) + age_m
-        if patient_months > max_months_limit:
+        limit_months = (89 * 12) + 11
+        if (age_y * 12) + age_m > limit_months:
             is_eligible = False
             reasons.append(f"Age exceeds limit (Max 89y 11m).")
     else:
@@ -250,25 +166,16 @@ def check_campaign_eligibility(campaign, state, age_y, age_m):
             
     if is_eligible:
         return True, "Patient meets all demographics criteria (State & Age)."
-    else:
-        return False, " & ".join(reasons)
+    return False, " & ".join(reasons)
 
 def format_combo_rule(campaign):
     ctype = campaign["combo_type"]
     clist = campaign.get("combo_list", [])
     if ctype == "accepted":
-        text = f"Accepted: {', '.join(clist)}"
-        css = "combo-green"
-        icon = "✅"
+        return f"Accepted: {', '.join(clist)}", "combo-green", "✅"
     elif ctype == "not_accepted":
-        text = f"Not Accepted: {', '.join(clist)}"
-        css = "combo-orange"
-        icon = "⚠️"
-    else:
-        text = "no combo"
-        css = "combo-blue"
-        icon = "ℹ️"
-    return text, css, icon
+        return f"Not Accepted: {', '.join(clist)}", "combo-orange", "⚠️"
+    return "no combo", "combo-blue", "ℹ️"
 
 # ---------------------------------------------------------
 # 4. UI RENDERER
@@ -281,7 +188,7 @@ with col2:
     check_btn = st.button("Check Eligibility Now")
 
 if check_btn and user_input:
-    with st.spinner("Analyzing Rules..."):
+    with st.spinner("Syncing Data & Analyzing..."):
         state, year, month, combo_raw = parse_input(user_input)
         
         if not state or not year:
@@ -293,66 +200,55 @@ if check_btn and user_input:
             
             active_campaigns = [c for c in CAMPAIGNS if c.get("status") == "Active"]
             
-            cols = st.columns(3)
-            for idx, campaign in enumerate(active_campaigns):
-                
-                is_eligible, reason_summary = check_campaign_eligibility(campaign, state, age_y, age_m)
-                
-                if is_eligible:
-                    status_html = '<span class="badge badge-success">✅ ELIGIBLE</span>'
-                    border_style = "border-top: 5px solid #00e676;"
-                    state_valid = True
-                    age_valid = True
-                else:
-                    status_html = '<span class="badge badge-error">❌ NOT ELIGIBLE</span>'
-                    border_style = "border-top: 5px solid #ff5252;"
-                    state_valid = state in campaign["states"]
-                    if campaign["name"] == "WE-PCP":
-                        limit_months = (89 * 12) + 11
-                        pat_months = (age_y * 12) + age_m
-                        age_valid = pat_months <= limit_months
+            if not active_campaigns:
+                st.warning("⚠️ No active campaigns found or data not loaded.")
+            else:
+                cols = st.columns(3)
+                for idx, campaign in enumerate(active_campaigns):
+                    is_eligible, reason_summary = check_campaign_eligibility(campaign, state, age_y, age_m)
+                    
+                    if is_eligible:
+                        status_html = '<span class="badge badge-success">✅ ELIGIBLE</span>'
+                        border_style = "border-top: 5px solid #00e676;"
+                        state_valid, age_valid = True, True
                     else:
-                        age_valid = campaign["min_age"] <= age_y <= campaign["max_age"]
+                        status_html = '<span class="badge badge-error">❌ NOT ELIGIBLE</span>'
+                        border_style = "border-top: 5px solid #ff5252;"
+                        state_valid = state in campaign["states"]
+                        if campaign["name"] == "WE-PCP":
+                            age_valid = ((age_y * 12) + age_m) <= ((89 * 12) + 11)
+                        else:
+                            age_valid = campaign["min_age"] <= age_y <= campaign["max_age"]
 
-                def get_row_html(label, val, is_valid):
-                    icon = "✅" if is_valid else "❌"
-                    color_class = "val-success" if is_valid else "val-error"
-                    return f'<div class="check-item"><span class="check-label">{label}</span><span class="{color_class}">{val} {icon}</span></div>'
+                    def get_row_html(label, val, is_valid):
+                        icon, color = ("✅", "val-success") if is_valid else ("❌", "val-error")
+                        return f'<div class="check-item"><span class="check-label">{label}</span><span class="{color}">{val} {icon}</span></div>'
 
-                rows_html = ""
-                rows_html += get_row_html("🗺️ State", state, state_valid)
-                rows_html += get_row_html("🎂 Age", f"{age_y}y {age_m}m", age_valid)
-                
-                if "age_note" in campaign:
-                    rows_html += f'<div class="age-note">⚠️ {campaign["age_note"]}</div>'
+                    rows_html = ""
+                    rows_html += get_row_html("🗺️ State", state, state_valid)
+                    rows_html += get_row_html("🎂 Age", f"{age_y}y {age_m}m", age_valid)
+                    
+                    if campaign["age_note"]: rows_html += f'<div class="age-note">⚠️ {campaign["age_note"]}</div>'
+                    rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{campaign["provided"]}</span></div>'
+                    if campaign["special_note"]: rows_html += f'<div class="special-note">⚠️ {campaign["special_note"]}</div>'
 
-                rows_html += f'<div class="check-item"><span class="check-label">🦿 Provided</span><span class="val-list">{campaign["provided"]}</span></div>'
-                
-                # 🔥 Special Note Logic (DL & MEDX)
-                if "special_note" in campaign:
-                    rows_html += f'<div class="special-note">⚠️ {campaign["special_note"]}</div>'
+                    combo_text, combo_css, combo_icon = format_combo_rule(campaign)
+                    combo_html = f'<div class="combo-box {combo_css}">{combo_icon} {combo_text}</div>'
 
-                combo_text, combo_css, combo_icon = format_combo_rule(campaign)
-                combo_html = f'<div class="combo-box {combo_css}">{combo_icon} {combo_text}</div>'
+                    res_link_html = f'<a href="{campaign["resource_link"]}" target="_blank" class="extra-link">{campaign["resource_label"]}</a>' if campaign["resource_link"] else ""
 
-                # Link Logic (Main + Resource)
-                res_link_html = ""
-                if "resource_link" in campaign:
-                    res_link_html = f'<a href="{campaign["resource_link"]}" target="_blank" class="extra-link">{campaign["resource_label"]}</a>'
-
-                with cols[idx % 3]:
-                    html_card = f"""
-<div class="glass-card" style="{border_style}">
-    <h3 class="card-title">{campaign['name']}</h3>
-    {status_html}
-    <div style="margin-bottom: 10px;">{rows_html}</div>
-    {combo_html}
-    <div class="reason-text">💡 {reason_summary}</div>
-    <div class="links-container">
-        <a href="{campaign['link']}" target="_blank" class="portal-link">🔗 Open Portal</a>
-        {res_link_html}
+                    with cols[idx % 3]:
+                        html_card = f"""
+    <div class="glass-card" style="{border_style}">
+        <h3 class="card-title">{campaign['name']}</h3>
+        {status_html}
+        <div style="margin-bottom: 10px;">{rows_html}</div>
+        {combo_html}
+        <div class="reason-text">💡 {reason_summary}</div>
+        <div class="links-container">
+            <a href="{campaign['link']}" target="_blank" class="portal-link">🔗 Open Portal</a>
+            {res_link_html}
+        </div>
     </div>
-</div>
-"""
-                    st.markdown(html_card, unsafe_allow_html=True)
-
+    """
+                        st.markdown(html_card, unsafe_allow_html=True)
