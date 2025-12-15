@@ -264,9 +264,10 @@ if check_btn and user_input:
         {combo_html}
         <div class="reason-text">💡 {reason_summary}</div>
         <div class="links-container">
-            <a href="{campaign['link']}" target="_blank" class="portal-link">🔗 Open Portal</a>
+            <a href="{campaign['link']}" target="_blank" class="portal-link">🔗 Open Client Page </a>
             {res_link_html}
         </div>
     </div>
     """
                         st.markdown(html_card, unsafe_allow_html=True)
+
