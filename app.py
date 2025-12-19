@@ -188,7 +188,7 @@ def format_combo_rule(campaign):
     return "no combo", "combo-blue", "ℹ️"
 
 # ---------------------------------------------------------
-# 4. UI RENDERER
+# 4. UI RENDERER (Indentation Fixed)
 # ---------------------------------------------------------
 st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_html=True)
 
@@ -246,33 +246,21 @@ if check_btn and user_input:
                     combo_text, combo_css, combo_icon = format_combo_rule(campaign)
                     combo_html = f'<div class="combo-box {combo_css}">{combo_icon} {combo_text}</div>'
 
-                    # 🔥 SMART BUTTON LOGIC 🔥
-                    # 1. Clean data
+                    # 🔥 SMART BUTTON LOGIC (Fixed)
                     raw_res_link = str(campaign.get("resource_link", "")).strip()
                     raw_res_label = str(campaign.get("resource_label", "Check Tool")).strip()
                     
-                    # 2. Strict Check: Must not be empty, nan, or none
                     extra_btn_html = ""
+                    # Check if link exists AND is not "nan" or "none"
                     if (len(raw_res_link) > 0 and 
                         raw_res_link.lower() != "nan" and 
                         raw_res_link.lower() != "none"):
-                        
                         extra_btn_html = f'<a href="{raw_res_link}" target="_blank" class="extra-link">{raw_res_label}</a>'
 
                     main_link = str(campaign.get('link', '#')).strip()
 
+                    # ⚠️ CRITICAL FIX: HTML String is NOT indented to avoid Markdown code blocks
+                    html_card = f"""<div class="glass-card" style="{border_style}"><h3 class="card-title">{campaign['name']}</h3>{status_html}<div style="margin-bottom: 10px;">{rows_html}</div>{combo_html}<div class="reason-text">💡 {reason_summary}</div><div class="links-container"><a href="{main_link}" target="_blank" class="portal-link">🔗 Open Client Page</a>{extra_btn_html}</div></div>"""
+
                     with cols[idx % 3]:
-                        html_card = f"""
-    <div class="glass-card" style="{border_style}">
-        <h3 class="card-title">{campaign['name']}</h3>
-        {status_html}
-        <div style="margin-bottom: 10px;">{rows_html}</div>
-        {combo_html}
-        <div class="reason-text">💡 {reason_summary}</div>
-        <div class="links-container">
-            <a href="{main_link}" target="_blank" class="portal-link">🔗 Open Client Page</a>
-            {extra_btn_html}
-        </div>
-    </div>
-    """
                         st.markdown(html_card, unsafe_allow_html=True)
