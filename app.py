@@ -197,6 +197,9 @@ def format_combo_rule(campaign):
 # ---------------------------------------------------------
 # 4. UI RENDERER
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# 4. UI RENDERER (Cleaned & Fixed)
+# ---------------------------------------------------------
 st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns([1, 2, 1])
@@ -215,8 +218,8 @@ if check_btn and user_input:
             combo_display = f" | Combo: {combo_raw}" if combo_raw and combo_raw != "None" else ""
             st.markdown(f"""<div class="summary-box">📋 Patient Profile: Age {age_y}y {age_m}m | State {state}{combo_display}</div>""", unsafe_allow_html=True)
             
-            # Filter Active Campaigns (Case Insensitive)
-            active_campaigns = [c for c in CAMPAIGNS if c.get("status").lower() == "active"]
+            # Filter Active Campaigns
+            active_campaigns = [c for c in CAMPAIGNS if str(c.get("status")).lower() == "active"]
             
             if not active_campaigns:
                 st.warning("⚠️ No active campaigns found. Please check your Google Sheet.")
@@ -253,7 +256,16 @@ if check_btn and user_input:
                     combo_text, combo_css, combo_icon = format_combo_rule(campaign)
                     combo_html = f'<div class="combo-box {combo_css}">{combo_icon} {combo_text}</div>'
 
-                    res_link_html = f'<a href="{campaign["resource_link"]}" target="_blank" class="extra-link">{campaign["resource_label"]}</a>' if campaign["resource_link"] else ""
+                    # 🔥 FIX: تنظيف اللينك الإضافي والتأكد إنه مش فاضي
+                    res_link_html = ""
+                    res_link = str(campaign.get("resource_link", "")).strip()
+                    res_label = str(campaign.get("resource_label", "Check Link")).strip()
+                    
+                    if res_link and res_link.lower() != "nan" and res_link != "":
+                        res_link_html = f'<a href="{res_link}" target="_blank" class="extra-link">{res_label}</a>'
+
+                    # Link for main portal (updated text to match your screenshot)
+                    main_link = str(campaign.get('link', '#')).strip()
 
                     with cols[idx % 3]:
                         html_card = f"""
@@ -264,10 +276,9 @@ if check_btn and user_input:
         {combo_html}
         <div class="reason-text">💡 {reason_summary}</div>
         <div class="links-container">
-            <a href="{campaign['link']}" target="_blank" class="portal-link">🔗 Open Client Page </a>
+            <a href="{main_link}" target="_blank" class="portal-link">🔗 Open Client Page</a>
             {res_link_html}
         </div>
     </div>
     """
                         st.markdown(html_card, unsafe_allow_html=True)
-
