@@ -34,10 +34,13 @@ st.markdown("""
     .combo-orange { background: #FFC50F; border: 1px solid #FFD740; color: #000000; box-shadow: 0 0 10px rgba(255, 197, 15, 0.2); }
     .combo-blue { background: rgba(2, 119, 189, 0.4); border: 1px solid #29b6f6; color: #e1f5fe; }
     .reason-text { margin-top: 15px; font-size: 0.85rem; color: #b0bec5; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 8px; border-left: 3px solid #607d8b; line-height: 1.5; }
+    
+    /* Links Container styling */
     .links-container { display: flex; gap: 10px; margin-top: 20px; }
     .portal-link { flex: 1; padding: 10px; background: linear-gradient(90deg, #2196f3, #21cbf3); color: white !important; text-align: center; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 0.9rem; transition: 0.3s; box-shadow: 0 4px 15px rgba(33, 203, 243, 0.3); }
     .extra-link { flex: 1; padding: 10px; background: linear-gradient(90deg, #7b1fa2, #ab47bc); color: white !important; text-align: center; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 0.9rem; transition: 0.3s; box-shadow: 0 4px 15px rgba(171, 71, 188, 0.3); }
     .portal-link:hover, .extra-link:hover { transform: scale(1.05); }
+    
     .stButton>button { width: 100%; background: linear-gradient(90deg, #00c853, #00e676); color: #003300; font-size: 1.3rem; border-radius: 12px; padding: 14px; border: none; font-weight: 800; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3); transition: 0.3s; }
     .stButton>button:hover { transform: scale(1.01); box-shadow: 0 6px 25px rgba(0, 230, 118, 0.5); color: #000; }
     .stTextInput>div>div>input { background-color: #161b22; border: 1px solid rgba(255, 255, 255, 0.2); color: white; border-radius: 10px; padding: 10px; font-size: 1.1rem; }
@@ -46,12 +49,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. DATA ENGINE (Google Sheets) 🌐
+# 2. DATA ENGINE (Google Sheets - CSV Link) 🌐
 # ---------------------------------------------------------
-# ✅ اللينك الصحيح (CSV)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQythtQBUCbRZAw54i_5x1uSz0NI9aA5O6GpYaKU6h_twzBGsJeu7PiJTjmUd4_xVGon4lHhSoQ7KZ7/pub?output=csv"
 
-# Full State List
 ALL_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"]
 
 @st.cache_data(ttl=60)
@@ -60,26 +61,19 @@ def load_campaigns():
         # Load Data
         df = pd.read_csv(SHEET_URL, dtype=str, engine='python', on_bad_lines='skip')
         df = df.fillna("") 
-        
-        # Clean Columns
         df.columns = [c.strip() for c in df.columns]
 
         campaigns = []
         for _, row in df.iterrows():
-            # Clean Strings Helper
             def clean_str(val): return str(val).strip()
             
             # Status Normalization
             status_raw = clean_str(row.get('status', 'Inactive')).title()
             
-            # Parse Lists
-            states_str = str(row.get('states', '')).replace('"', '').strip()
-            states_list = [s.strip().upper() for s in states_str.split(',')] if states_str else []
+            # Lists
+            states_list = [s.strip().upper() for s in str(row.get('states', '')).split(',')] if row.get('states') else []
+            combos_list = [c.strip() for c in str(row.get('combo_list', '')).split(',')] if row.get('combo_list') else []
             
-            combos_str = str(row.get('combo_list', '')).replace('"', '').strip()
-            combos_list = [c.strip() for c in combos_str.split(',')] if combos_str else []
-            
-            # Safe Int Conversion
             def safe_int(val):
                 try: return int(float(val))
                 except: return 0
@@ -88,8 +82,8 @@ def load_campaigns():
                 "name": clean_str(row.get('name', 'Unknown')),
                 "status": status_raw,
                 "link": clean_str(row.get('link', '#')),
-                "resource_link": clean_str(row.get('resource_link', '')) if row.get('resource_link') else None,
-                "resource_label": clean_str(row.get('resource_label', 'Check Link')) if row.get('resource_label') else None,
+                "resource_link": clean_str(row.get('resource_link', '')), # Keep raw for checking later
+                "resource_label": clean_str(row.get('resource_label', 'Check Tool')),
                 "provided": clean_str(row.get('provided', '')),
                 "special_note": clean_str(row.get('special_note', '')) if row.get('special_note') else None,
                 "combo_type": clean_str(row.get('combo_type', 'none')),
@@ -167,7 +161,6 @@ def check_campaign_eligibility(campaign, state, age_y, age_m):
         is_eligible = False
         reasons.append(f"State {state} is NOT in approved list.")
     
-    # Age Logic
     if campaign["name"] == "WE-PCP":
         limit_months = (89 * 12) + 11
         if (age_y * 12) + age_m > limit_months:
@@ -196,9 +189,6 @@ def format_combo_rule(campaign):
 
 # ---------------------------------------------------------
 # 4. UI RENDERER
-# ---------------------------------------------------------
-# ---------------------------------------------------------
-# 4. UI RENDERER (Cleaned & Fixed)
 # ---------------------------------------------------------
 st.markdown('<div class="main-title">Eligibility Hub 💎</div>', unsafe_allow_html=True)
 
@@ -256,15 +246,19 @@ if check_btn and user_input:
                     combo_text, combo_css, combo_icon = format_combo_rule(campaign)
                     combo_html = f'<div class="combo-box {combo_css}">{combo_icon} {combo_text}</div>'
 
-                    # 🔥 FIX: تنظيف اللينك الإضافي والتأكد إنه مش فاضي
-                    res_link_html = ""
-                    res_link = str(campaign.get("resource_link", "")).strip()
-                    res_label = str(campaign.get("resource_label", "Check Link")).strip()
+                    # 🔥 SMART BUTTON LOGIC 🔥
+                    # 1. Clean data
+                    raw_res_link = str(campaign.get("resource_link", "")).strip()
+                    raw_res_label = str(campaign.get("resource_label", "Check Tool")).strip()
                     
-                    if res_link and res_link.lower() != "nan" and res_link != "":
-                        res_link_html = f'<a href="{res_link}" target="_blank" class="extra-link">{res_label}</a>'
+                    # 2. Strict Check: Must not be empty, nan, or none
+                    extra_btn_html = ""
+                    if (len(raw_res_link) > 0 and 
+                        raw_res_link.lower() != "nan" and 
+                        raw_res_link.lower() != "none"):
+                        
+                        extra_btn_html = f'<a href="{raw_res_link}" target="_blank" class="extra-link">{raw_res_label}</a>'
 
-                    # Link for main portal (updated text to match your screenshot)
                     main_link = str(campaign.get('link', '#')).strip()
 
                     with cols[idx % 3]:
@@ -277,7 +271,7 @@ if check_btn and user_input:
         <div class="reason-text">💡 {reason_summary}</div>
         <div class="links-container">
             <a href="{main_link}" target="_blank" class="portal-link">🔗 Open Client Page</a>
-            {res_link_html}
+            {extra_btn_html}
         </div>
     </div>
     """
