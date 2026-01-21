@@ -2,7 +2,7 @@ import streamlit as st
 import datetime
 import re
 import pandas as pd
-s
+
 # ---------------------------------------------------------
 # 1. CSS & STYLING (PURE BLACK UI ⚫)
 # ---------------------------------------------------------
@@ -264,4 +264,5 @@ if check_btn and user_input:
 
                     with cols[idx % 3]:
                         st.markdown(html_card, unsafe_allow_html=True)
+
 
